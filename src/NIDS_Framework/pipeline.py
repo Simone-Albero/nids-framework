@@ -1,11 +1,17 @@
 import functools
-from typing import Callable
+from typing import Callable, List
 
 class Pipeline(object):
     __slots__ = ['_tasks']
 
-    def __init__(self):
-        self._tasks = []
+    def __init__(self) -> None:
+        """
+        Specifies a sequence of tasks to be executed as a preprocessing pipeline.
+
+        Params:
+            - _tasks: list of tasks.
+        """
+        self._tasks: List[Callable] = []
     
     def register(self, priority: int) -> Callable[[Callable], Callable]:
         """
@@ -27,5 +33,5 @@ class Pipeline(object):
         return decorator
 
     def execute(self) -> None:
-        for task in sorted(self._tasks, key=lambda x: x.priority):
+        for task in sorted(self._tasks, key=lambda wrapper: wrapper.priority):
             task()
