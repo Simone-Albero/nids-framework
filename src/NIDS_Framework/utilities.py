@@ -4,10 +4,12 @@ import pickle
 class CacheUtils(object):
     @staticmethod
     def exists(cache_path: str):
+        """Check if cache file exists."""
         return os.path.exists(cache_path)
         
     @staticmethod
     def read(cache_path: str):
+        """Load data from cache."""
         print(f"Reading directly from cache '{cache_path}' ...")
         try:
             with open(cache_path, 'rb') as r:
@@ -19,6 +21,7 @@ class CacheUtils(object):
 
     @staticmethod
     def write(cache_path: str, data):
+        """Save data to cache."""
         print(f"Writing to cache '{cache_path}' ...")
         try:
             with open(cache_path, 'wb') as file:
