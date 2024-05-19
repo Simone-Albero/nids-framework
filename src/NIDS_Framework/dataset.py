@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Any
 import os
 
 import pandas as pd # dependences: pandas?
@@ -51,27 +51,43 @@ class Dataset(object):
             raise Exception(f"Please provide either the cache path or the dataset path!")
     
     class ColumnIterator:
-        def __init__(self, features: List[str], blacklist: Optional[List[str]] = None) -> None:
+        """Iterator over DataFrame columns."""
+        
+        __slots__ = ['_df', '_features', '_blacklist', '_index']
+
+        def __init__(self, df: pd.DataFrame, features: List[str], blacklist: Optional[List[str]] = None) -> None:
+            """
+            Initialize the ColumnIterator.
+
+            Params:
+                - _df: The DataFrame to iterate over.
+                - _features: List of column names to iterate over.
+                - _blacklist: List of column names to exclude. Defaults to None.
+                - _index: current iterator index.
+            """
+            self._df = df
             self._features = features
             self._blacklist = blacklist or []
             self._index = 0
 
         def __iter__(self):
+            """Return iterator object."""
             return self
 
         def __next__(self):
+            """Return the next column name and its corresponding values."""
             while self._index < len(self._features):
                 column_name = self._features[self._index]
                 self._index += 1
                 if column_name not in self._blacklist:
-                    return column_name
+                    return (column_name, self._df[column_name].values)
             raise StopIteration
 
     def _load_from_file(self, dataset_path: str, properties: DatasetProperties) -> None:
         """
         Load dataset from file and save to cache.
 
-        Params:
+        Args:
             - dataset_path: the path to the dataset file.
             - properties: properties of the dataset.
         """
@@ -96,15 +112,26 @@ class Dataset(object):
         data = CacheUtils.read(self.cache_path)
         self._df, self._properties = data['df'], data['properties']
     
-    def column_iterator(self):
+    def column_iterator(self) -> ColumnIterator:
         """Iterate over columns of the DataFrame."""
-        return self.ColumnIterator(self._properties.features)
+        return self.ColumnIterator(self._df, self._properties.features)
     
-    def numerical_column_iterator(self):
+    def numerical_column_iterator(self) -> ColumnIterator:
         """Iterate over numerical columns of the DataFrame."""
-        return self.ColumnIterator(self._properties.features, self._properties.categorical_features)
+        return self.ColumnIterator(self._df, self._properties.features, self._properties.categorical_features)
     
-    def categorical_column_iterator(self):
+    def categorical_column_iterator(self) -> ColumnIterator:
         """Iterate over categorical columns of the DataFrame."""
-        return self.ColumnIterator(self._properties.features, self._properties.numerical_features)
+        return self.ColumnIterator(self._df, self._properties.features, self._properties.numerical_features)
+    
+    def update_column(self, column_name: str, values: List[Any]) -> None:
+        """
+        Update the values of the specified DataFrame column.
+
+        Args:
+            column_name (str): The name of the column to update.
+            values (List[Any]): The new values to assign to the column.
+        """
+        self._df[column_name] = values
+        
 

@@ -1,24 +1,26 @@
+import numpy as np
+
 from pipeline import Pipeline
 from dataset import Dataset
 from dataset import DatasetProperties
 
-
 def pipeline_test():
     pipeline = Pipeline()
+    dataset = None
 
     @pipeline.register(priority=2)
-    def task1():
+    def task1(dataset):
         print("Task 1")
 
     @pipeline.register(priority=1)
-    def task2():
+    def task2(dataset):
         print("Task 2")
 
     @pipeline.register(priority=3)
-    def task3():
+    def task3(dataset):
         print("Task 3")
     
-    pipeline.execute()
+    pipeline.execute(dataset)
 
 def dataset_test():
     properties = DatasetProperties(
@@ -33,6 +35,25 @@ def dataset_test():
     dataset = Dataset(cache_path, dataset_path, properties)
     print(dataset._df.head())
 
+def pre_processing_test():
+    cache_path = 'dataset/cache/NF-UNSW-NB15.pk1'
+    dataset = Dataset(cache_path)
+    print(dataset._df.head())
+
+    pipeline = Pipeline()
+
+    @pipeline.register(priority=1)
+    def base_pre_processing(dataset):
+        for column_name, column_values in dataset.numerical_column_iterator():
+            column_values[~np.isfinite(column_values)] = 0
+            column_values[column_values < - 1000000] = 0
+            column_values[column_values > 1000000] = 0
+            column_values = column_values.astype("float32")
+            dataset.update_column(column_name, column_values)
+            print(dataset._df[column_name])
+    
+    pipeline.execute(dataset)
+
 if __name__ == "__main__":
-    dataset_test()
+    pre_processing_test()
 
