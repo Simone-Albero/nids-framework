@@ -119,7 +119,10 @@ class Dataset(object):
                 if self._sample_mask is None:
                     return (column_name, self._df[column_name].values)
                 else:
-                    return (column_name, self._df[column_name][self._sample_mask].values)
+                    return (
+                        column_name,
+                        self._df[column_name][self._sample_mask].values,
+                    )
             raise StopIteration
 
     def _load_from_file(self, dataset_path: str, properties: DatasetProperties) -> None:
@@ -176,9 +179,7 @@ class Dataset(object):
                 self._df, self._properties.numerical_features, self._training_mask
             )
         else:
-            return self.ColumnIterator(
-                self._df, self._properties.numerical_features
-            )
+            return self.ColumnIterator(self._df, self._properties.numerical_features)
 
     def categorical_column_iterator(self, isOverTrain: bool = False) -> ColumnIterator:
         """Create an iterator to iterate over the categorical columns of the dataset.
@@ -194,9 +195,7 @@ class Dataset(object):
                 self._df, self._properties.categorical_features, self._training_mask
             )
         else:
-            return self.ColumnIterator(
-                self._df, self._properties.categorical_features
-            )
+            return self.ColumnIterator(self._df, self._properties.categorical_features)
 
     def update_column(self, column_name: str, values: List[Any]) -> None:
         """Update the values of the specified Dataset column.
@@ -204,21 +203,43 @@ class Dataset(object):
         Args:
             column_name: The name of the column to update.
             values: The new values to assign to the column.
-        
+
         Raises:
             ValueError: Raised if values length differs from Dataset column length.
         """
         if len(values) != self._df.shape[0]:
-            raise ValueError(f"The size of the values, {len(values)}, does not match the size of the dataset columns, {self._df.shape[0]}.")
+            raise ValueError(
+                f"The size of the values, {len(values)}, does not match the size of the dataset columns, {self._df.shape[0]}."
+            )
 
         self._df[column_name] = values
+
+    def add_columns(self, df: pd.DataFrame) -> None:
+        """Update the values of the specified Dataset column.
+
+        Args:
+            df: The columns to add to the Dataset contained in a Dataframe.
+
+        Raises:
+            ValueError: Raised if columns length differs from Dataset columns length.
+            ValueError: Raised if columns are not provided in a Pandas Dataframe.
+        """
+        if not isinstance(df, pd.DataFrame):
+            raise ValueError("The provided columns mut be in a Pandas Dataframe")
+
+        if df.shape[0] != self._df.shape[0]:
+            raise ValueError(
+                f"The size of the values, {df.shape[0]}, does not match the size of the dataset columns, {self._df.shape[0]}."
+            )
+
+        self._df = pd.concat([self._df, df], axis=1)
 
     def drop_column(self, column_name: str) -> None:
         """Remove the column named column_name from the Dataset.
 
         Args:
             column_name: The name of the column to remove.
-        
+
         Raises:
             ValueError: Raised if 'column_name' does not exsit between the Dataset columns.
         """
@@ -226,7 +247,7 @@ class Dataset(object):
             raise ValueError(f"Column: {column_name} does not exist.")
 
         self._df.drop(columns=[column_name], inplace=True)
-    
+
     def random_train_test_split(self, train_test_ratio: float) -> None:
         """Randomly generate the training mask used to distinguish training set samples from test set samples.
 

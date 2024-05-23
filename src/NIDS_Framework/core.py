@@ -2,7 +2,7 @@ import numpy as np
 
 from pre_processing.pipeline import Pipeline
 from pre_processing.dataset import Dataset, DatasetProperties
-from pre_processing.utilities import base_pre_processing
+from pre_processing.utilities import base_pre_processing, numerical_pre_processing, categorical_pre_processing
 
 
 def pipeline_test():
@@ -94,11 +94,19 @@ def pre_processing_test():
     pl = Pipeline()
 
     @pl.register(priority=1)
-    def task(dataset):
+    def task1(dataset):
         base_pre_processing(dataset)
+
+    @pl.register(priority=2)
+    def task2(dataset):
+        numerical_pre_processing(dataset)
+
+    @pl.register(priority=3)
+    def task3(dataset):
+        categorical_pre_processing(dataset)
 
     pl.execute(dataset)
 
 
 if __name__ == "__main__":
-    dataset_test()
+    pre_processing_test()
