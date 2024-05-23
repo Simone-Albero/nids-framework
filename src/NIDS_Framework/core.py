@@ -101,4 +101,4 @@ def pre_processing_test():
 
 
 if __name__ == "__main__":
-    pre_processing_test()
+    dataset_test()
