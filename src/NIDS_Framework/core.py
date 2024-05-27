@@ -4,6 +4,7 @@ from torch.utils.data import DataLoader
 
 from data_preparation import transformations, data_manager
 
+
 def data_loader_test():
     prop = data_manager.DatasetProperties(
         features=[
@@ -59,50 +60,47 @@ def data_loader_test():
         labels="Attack",
         benign_label="Benign",
     )
-    logging.info(f'Tot features: {len(prop.features)}, Numeric features: {len(prop.numeric_features)}, Categorical features: {len(prop.categorical_features)}')
+    logging.info(
+        f"Tot features: {len(prop.features)}, Numeric features: {len(prop.numeric_features)}, Categorical features: {len(prop.categorical_features)}"
+    )
 
     dataset_path = "dataset/NF-UNSW-NB15-v2.csv"
     dm = data_manager.DataManager(dataset_path, prop)
 
-    bound=100000
+    bound = 100000
 
-    @transformations.transform_wrapper
-    def task1(sample, bound):
+    @dm.numeric_transformation(priority=1)
+    def task1(sample, bound=bound):
         return transformations.bound_transformation(sample, bound)
 
-    trans1 = task1(bound=bound)
-
-    @transformations.transform_wrapper
-    def task2(sample, bound):
+    @dm.numeric_transformation(priority=2)
+    def task2(sample, bound=bound):
         return transformations.log_transformation(sample, bound)
 
-    trans2 = task2(bound=bound)
-
-    @transformations.transform_wrapper
-    def task3(sample, categorical_bound):
+    @dm.categorical_transformation(priority=1)
+    def task3(sample, categorical_bound=32):
         return transformations.one_hot_transformation(sample, categorical_bound)
-
-    trans3 = task3(categorical_bound=32)
-
-    dm.add_transformation(trans1)
-    dm.add_transformation(trans2)
-    dm.add_transformation(trans3, True)
 
     train_dataset = dm.train_data()
 
     train_dataloader = DataLoader(train_dataset, batch_size=2, shuffle=True)
 
     for batch in train_dataloader:
-        print("Training batch:", batch[0])
+        features, label = batch
+        print(features[0].shape)
+        #print(label.shape)
         break
+
 
 def main():
     debug_level = logging.INFO
     logging.basicConfig(
-        level=debug_level, format="%(message)s",
-        handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)]
+        level=debug_level,
+        format="%(message)s",
+        handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
     data_loader_test()
+
 
 if __name__ == "__main__":
     main()
