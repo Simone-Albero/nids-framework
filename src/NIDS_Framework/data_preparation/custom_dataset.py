@@ -46,56 +46,52 @@ class CustomDataset(Dataset):
         self.categorical_transformation = categorical_transformation
         self.target_transformation = target_transformation
 
+        max_len = max(len(categorical_data[col].value_counts().index) for col in categorical_data.columns)
+        categorical_levels = [
+            list(categorical_data[col].value_counts().index) + [float('inf')] * (max_len - len(categorical_data[col].value_counts().index))
+            for col in categorical_data.columns
+        ]
+
         self.stats = {
-            "mean": numeric_data.mean(),
-            "std": numeric_data.std(),
-            "min": numeric_data.min(),
-            "max": numeric_data.max(),
-            "value_counts": {
-                col: categorical_data[col].value_counts()
-                for col in categorical_data.columns
-            },
+            'mean': torch.tensor(numeric_data.mean().values, dtype=torch.float32),
+            'std': torch.tensor(numeric_data.std().values, dtype=torch.float32),
+            'min': torch.tensor(numeric_data.min().values, dtype=torch.float32),
+            'max': torch.tensor(numeric_data.max().values, dtype=torch.float32),
+            'categorical_levels': torch.tensor(categorical_levels, dtype=torch.float32),
         }
 
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        if torch.is_tensor(idx):
-            idx = idx.tolist()
-
-        if self.labels is not None: label = torch.tensor(self.labels.iloc[idx], dtype=torch.long)
+        if torch.is_tensor(idx): idx = idx.tolist()
+        if self.labels is not None: label = torch.tensor(self.labels.iloc[idx].tolist(), dtype=torch.long)
 
         numeric_sample = {
-                "features": self.numeric_data.iloc[idx].values,
-                "label": label,
-                "columns": self.numeric_data.columns,
-                "stats": self.stats,
+                'features': torch.tensor(self.numeric_data.iloc[idx].values, dtype=torch.float32),
+                'label': label,
+                'stats': self.stats,
             }
+        
         if self.numeric_transformation:
             numeric_sample = self.numeric_transformation(numeric_sample)
 
         categorical_sample = {
-                "features": self.categorical_data.iloc[idx].values,
-                "label": label,
-                "columns": self.categorical_data.columns,
-                "stats": self.stats,
+                'features': torch.tensor(self.categorical_data.iloc[idx].values, dtype=torch.float32),
+                'label': label,
+                'stats': self.stats,
             }
         if self.categorical_transformation:
             categorical_sample = self.categorical_transformation(categorical_sample)
 
         target_sample = {
-                "label": label,
-                "columns": self.categorical_data.columns,
-                "stats": self.stats,
+                'label': label,
+                'columns': self.categorical_data.columns,
+                'stats': self.stats,
             }
         if self.target_transformation:
             target_sample = self.target_transformation(target_sample)
 
-        numeric_tensor = numeric_sample["features"].unsqueeze(0)
-        categorical_tensors = [
-            categorical_feature.unsqueeze(0)
-            for categorical_feature in categorical_sample["features"]
-        ]
-        features = torch.cat([numeric_tensor] + categorical_tensors, dim=1).squeeze(0)
-        return features, label
+        print(numeric_sample['features'].shape, categorical_sample['features'].shape)
+
+        return [numeric_sample['features'], categorical_sample['features']]

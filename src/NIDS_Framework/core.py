@@ -2,7 +2,7 @@ import logging
 from rich.logging import RichHandler
 from torch.utils.data import DataLoader
 
-from data_preparation import transformations, data_manager
+from data_preparation import transformations, data_manager, custom_sampler
 
 
 def data_loader_test():
@@ -77,23 +77,29 @@ def data_loader_test():
     def task2(sample, bound=bound):
         return transformations.log_transformation(sample, bound)
 
+    categorical_bound=32
     @dm.categorical_transformation(priority=1)
-    def task3(sample, categorical_bound=32):
-        return transformations.one_hot_transformation(sample, categorical_bound)
+    def task3(sample):
+        return transformations.categorical_value_encoding(sample, categorical_bound=categorical_bound)
+    
+    @dm.categorical_transformation(priority=2)
+    def task4(sample):
+        return transformations.categorical_one_hot_encoding(sample, categorical_bound=categorical_bound)
 
     train_dataset = dm.train_data()
 
-    train_dataloader = DataLoader(train_dataset, batch_size=2, shuffle=True)
+    sampler = custom_sampler.RandomSlidingWindowSampler(train_dataset, window_size=8)
+    train_dataloader = DataLoader(train_dataset, batch_size=2, sampler=sampler, drop_last=True)
 
     for batch in train_dataloader:
-        features, label = batch
+        features = batch
         print(features[0].shape)
         #print(label.shape)
         break
 
 
 def main():
-    debug_level = logging.INFO
+    debug_level = logging.DEBUG
     logging.basicConfig(
         level=debug_level,
         format="%(message)s",

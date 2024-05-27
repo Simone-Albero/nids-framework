@@ -12,14 +12,12 @@ def bound_transformation(sample: Any, bound: int):
         sample: The input sample.
         bound: The bound to filter values.
     """
-    features = torch.tensor(sample["features"], dtype=torch.float32)
-    features = torch.where(
-        (features < -bound) | (features > bound), torch.tensor(0.0), features
-    )
+    features = sample['features']
+    features = torch.clamp(features,  min=-bound, max=bound)
 
-    logging.debug(f"Bound transformation: {features}")
+    logging.debug(f'Bound transformation shape: {features.shape}')
 
-    sample["features"] = features
+    sample['features'] = features
     return sample
 
 
@@ -29,53 +27,47 @@ def log_transformation(sample: Any, bound: int):
     Args:
         sample: The input sample.
     """
-    features, columns, stats = sample["features"], sample["columns"], sample["stats"]
+    features, stats = sample['features'], sample['stats']
+    
+    min_values = torch.clamp(stats['min'],  min=-bound)
+    max_values = torch.clamp(stats['max'],  max=bound)
+    gaps = max_values - min_values
 
-    for i, column in enumerate(columns):
-        min_val = max(stats["min"][column], -bound)
-        max_val = min(stats["max"][column], bound)
-        gap = max_val - min_val
+    mask = gaps != 0
+    features = torch.where(mask, torch.log(features + 1) / torch.log(gaps + 1), torch.zeros_like(features))
+    features = torch.where(mask, features, torch.zeros_like(features))
+    
+    logging.debug(f'Log transformation shape: {features.shape}')
 
-        if gap == 0:
-            features[i] = 0
-        else:
-            features[i] -= min_val
-            features[i] = torch.log(features[i] + 1)
-            features[i] *= 1.0 / log(gap + 1)
-
-    logging.debug(f"Log transformation: {features}")
+    sample['features'] = features
     return sample
 
 
-def one_hot_transformation(sample: Any, categorical_bound: int):
-    """One hot encode the features in the sample up to a given categorical bound.
+def categorical_value_encoding(sample: Any, categorical_bound: int):
+    features, stats = sample['features'], sample['stats']
+    categorical_levels = stats['categorical_levels'][:, :categorical_bound].t()
 
-    Args:
-        categorical_bound: .
-    """
+    value_encoding = torch.zeros_like(features)
+    for col_idx, col in enumerate(features.t()):
+        for row_idx, val in enumerate(col):
+            mask = (categorical_levels[:, col_idx] == val).nonzero()
+            if mask.numel() > 0:
+                value_encoding[row_idx, col_idx] = mask.item() + 1
 
-    features, columns, stats = sample["features"], sample["columns"], sample["stats"]
-    new_features = []
+    logging.debug(f'Categorical value transformation shape: {value_encoding.shape}')
 
-    for i, column in enumerate(columns):
-        value_counts = stats["value_counts"][column]
+    sample['features'] = value_encoding
+    return sample
 
-        unique_values = value_counts.index.to_numpy()
-        counts = value_counts.values
+def categorical_one_hot_encoding(sample: Any, categorical_bound: int):
+    features = sample['features']
 
-        sorted_unique_values = list(
-            sorted(zip(unique_values, counts), key=lambda x: x[1], reverse=True)
-        )
-        top_unique_values = [x[0] for x in sorted_unique_values[:categorical_bound]]
+    one_hot_encode = lambda label: torch.eye(categorical_bound)[label.long()]
+    one_hot_labels = torch.stack([one_hot_encode(label) for row in features for label in row])
+    one_hot_labels = one_hot_labels.view(features.size(0), features.size(1), -1)
 
-        feature_encoding = torch.zeros(categorical_bound, dtype=torch.float32)
-        if features[i] in top_unique_values:
-            index = top_unique_values.index(features[i])
-            feature_encoding[index] = 1.0
 
-        new_features.append(feature_encoding)
+    logging.debug(f'Categorical one-hot transformation shape: {one_hot_labels.shape}')
 
-    sample["features"] = new_features
-
-    logging.debug(f'One Hot transformation: {sample["features"]}')
+    sample['features'] = one_hot_labels
     return sample
