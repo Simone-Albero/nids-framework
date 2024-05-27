@@ -33,7 +33,7 @@ class CustomDataset(Dataset):
         self,
         numeric_data: pd.DataFrame,
         categorical_data: pd.DataFrame,
-        labels: pd.DataFrame,
+        labels: Optional[pd.DataFrame] = None,
         numeric_transformation: Optional[Callable] = None,
         categorical_transformation: Optional[Callable] = None,
         target_transformation: Optional[Callable] = None,
@@ -57,7 +57,6 @@ class CustomDataset(Dataset):
             },
         }
 
-
     def __len__(self):
         return len(self.labels)
 
@@ -65,32 +64,32 @@ class CustomDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        label = self.labels.iloc[idx]
+        if self.labels is not None: label = torch.tensor(self.labels.iloc[idx], dtype=torch.long)
 
-        if self.numeric_transformation:
-            numeric_sample = {
+        numeric_sample = {
                 "features": self.numeric_data.iloc[idx].values,
                 "label": label,
                 "columns": self.numeric_data.columns,
                 "stats": self.stats,
             }
+        if self.numeric_transformation:
             numeric_sample = self.numeric_transformation(numeric_sample)
 
-        if self.categorical_transformation:
-            categorical_sample = {
+        categorical_sample = {
                 "features": self.categorical_data.iloc[idx].values,
                 "label": label,
                 "columns": self.categorical_data.columns,
                 "stats": self.stats,
             }
+        if self.categorical_transformation:
             categorical_sample = self.categorical_transformation(categorical_sample)
 
-        if self.target_transformation:
-            target_sample = {
+        target_sample = {
                 "label": label,
                 "columns": self.categorical_data.columns,
                 "stats": self.stats,
             }
+        if self.target_transformation:
             target_sample = self.target_transformation(target_sample)
 
         numeric_tensor = numeric_sample["features"].unsqueeze(0)

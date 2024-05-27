@@ -1,8 +1,9 @@
-from typing import List, Optional, Callable, Any
+from typing import List, Optional, Dict
 import os
 import logging
 
 import pandas as pd
+import numpy as np
 from sklearn.model_selection import train_test_split
 from torchvision.transforms import Compose
 
@@ -21,11 +22,11 @@ class DatasetProperties:
     """
 
     __slots__ = [
-        "features",
-        "categorical_features",
-        "numeric_features",
-        "labels",
-        "benign_label",
+        'features',
+        'categorical_features',
+        'numeric_features',
+        'labels',
+        'benign_label',
     ]
 
     def __init__(
@@ -55,15 +56,17 @@ class DataManager:
         _numeric_transformations: The list of numerical data transformations.
         _categorical_transformations: The list of categorical data transformations.
         _target_transformation: The list of labels transformations.
+        _label_mapping: .
     """
 
     __slots__ = [
-        "_train_df",
-        "_test_df",
-        "_properties",
-        "_numeric_transformations",
-        "_categorical_transformations",
-        "_target_transformation",
+        '_train_df',
+        '_test_df',
+        '_properties',
+        '_numeric_transformations',
+        '_categorical_transformations',
+        '_target_transformation',
+        '_label_mapping',
     ]
 
     def __init__(
@@ -72,8 +75,16 @@ class DataManager:
         properties: DatasetProperties = None,
     ) -> None:
         self._properties: DatasetProperties = properties
+        self._label_mapping = None
 
         df = self._load_df(dataset_path)
+
+        # TODO: make this modular
+        if self._properties.labels is not None and df[self._properties.labels].dtype == 'object':
+            self._label_mapping = {label: idx for idx, label in enumerate(df[self._properties.labels].unique())}
+            df[self._properties.labels] = np.vectorize(self._label_mapping.get)(df[self._properties.labels])
+
+        # TODO: test_size hard-coded here
         train_df, test_df = train_test_split(df, test_size=0.2, random_state=42)
         self._train_df: pd.DataFrame = train_df
         self._test_df: pd.DataFrame = test_df
@@ -111,7 +122,7 @@ class DataManager:
         dataset = custom_dataset.CustomDataset(
             self._train_df[self._properties.numeric_features],
             self._train_df[self._properties.categorical_features],
-            self._train_df[self._properties.labels],
+            self._train_df[self._properties.labels] if self._properties.labels is not None else None,
             Compose(sorted(self._numeric_transformations, key=lambda x: x.priority)),
             Compose(sorted(self._categorical_transformations, key=lambda x: x.priority)),
             Compose(sorted(self._target_transformation, key=lambda x: x.priority)),
