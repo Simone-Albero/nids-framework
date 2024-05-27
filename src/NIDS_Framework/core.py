@@ -1,31 +1,11 @@
-import numpy as np
+import logging
+from rich.logging import RichHandler
+from torch.utils.data import DataLoader
 
-from pre_processing.pipeline import Pipeline
-from pre_processing.dataset import Dataset, DatasetProperties
-from pre_processing.utilities import base_pre_processing, numerical_pre_processing, categorical_pre_processing
+from data_preparation import transformations, data_manager
 
-
-def pipeline_test():
-    pl = Pipeline()
-    dataset = None
-
-    @pl.register(priority=2)
-    def task1(dataset):
-        print("Task 1")
-
-    @pl.register(priority=1)
-    def task2(dataset):
-        print("Task 2")
-
-    @pl.register(priority=3)
-    def task3(dataset):
-        print("Task 3")
-
-    pl.execute(dataset)
-
-
-def dataset_test():
-    prop = DatasetProperties(
+def data_loader_test():
+    prop = data_manager.DatasetProperties(
         features=[
             "NUM_PKTS_UP_TO_128_BYTES",
             "SRC_TO_DST_SECOND_BYTES",
@@ -76,37 +56,53 @@ def dataset_test():
             "L4_DST_PORT",
             "L7_PROTO",
         ],
-        labels_column="Attack",
+        labels="Attack",
         benign_label="Benign",
     )
+    logging.info(f'Tot features: {len(prop.features)}, Numeric features: {len(prop.numeric_features)}, Categorical features: {len(prop.categorical_features)}')
+
     dataset_path = "dataset/NF-UNSW-NB15-v2.csv"
-    cache_path = "dataset/cache/NF-UNSW-NB15.pk1"
+    dm = data_manager.DataManager(dataset_path, prop)
 
-    data = Dataset(cache_path, dataset_path, prop)
-    print(data._df.head())
+    bound=100000
 
+    @transformations.transform_wrapper
+    def task1(sample, bound):
+        return transformations.bound_transformation(sample, bound)
 
-def pre_processing_test():
-    cache_path = "dataset/cache/NF-UNSW-NB15.pk1"
-    dataset = Dataset(cache_path)
-    print(dataset._df.head())
+    trans1 = task1(bound=bound)
 
-    pl = Pipeline()
+    @transformations.transform_wrapper
+    def task2(sample, bound):
+        return transformations.log_transformation(sample, bound)
 
-    @pl.register(priority=1)
-    def task1(dataset):
-        base_pre_processing(dataset)
+    trans2 = task2(bound=bound)
 
-    @pl.register(priority=2)
-    def task2(dataset):
-        numerical_pre_processing(dataset)
+    @transformations.transform_wrapper
+    def task3(sample, categorical_bound):
+        return transformations.one_hot_transformation(sample, categorical_bound)
 
-    @pl.register(priority=3)
-    def task3(dataset):
-        categorical_pre_processing(dataset)
+    trans3 = task3(categorical_bound=32)
 
-    pl.execute(dataset)
+    dm.add_transformation(trans1)
+    dm.add_transformation(trans2)
+    dm.add_transformation(trans3, True)
 
+    train_dataset = dm.train_data()
+
+    train_dataloader = DataLoader(train_dataset, batch_size=2, shuffle=True)
+
+    for batch in train_dataloader:
+        print("Training batch:", batch[0])
+        break
+
+def main():
+    debug_level = logging.INFO
+    logging.basicConfig(
+        level=debug_level, format="%(message)s",
+        handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)]
+    )
+    data_loader_test()
 
 if __name__ == "__main__":
-    pre_processing_test()
+    main()
