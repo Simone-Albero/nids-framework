@@ -1,8 +1,9 @@
 import logging
+
 from rich.logging import RichHandler
 from torch.utils.data import DataLoader
 
-from data_preparation import transformations, data_manager, custom_sampler
+from data_preparation import data_manager, custom_sampler, utilities
 
 
 def data_loader_test():
@@ -71,25 +72,25 @@ def data_loader_test():
 
     @dm.numeric_transformation(priority=1)
     def task1(sample, bound=bound):
-        return transformations.bound_transformation(sample, bound)
+        return utilities.bound_transformation(sample, bound)
 
     @dm.numeric_transformation(priority=2)
     def task2(sample, bound=bound):
-        return transformations.log_transformation(sample, bound)
+        return utilities.log_transformation(sample, bound)
 
     categorical_bound=32
     @dm.categorical_transformation(priority=1)
     def task3(sample):
-        return transformations.categorical_value_encoding(sample, categorical_bound=categorical_bound)
+        return utilities.categorical_value_encoding(sample, categorical_bound=categorical_bound)
     
     @dm.categorical_transformation(priority=2)
     def task4(sample):
-        return transformations.categorical_one_hot_encoding(sample, categorical_bound=categorical_bound)
+        return utilities.categorical_one_hot_encoding(sample, categorical_bound=categorical_bound)
 
     train_dataset = dm.train_data()
 
     sampler = custom_sampler.RandomSlidingWindowSampler(train_dataset, window_size=8)
-    train_dataloader = DataLoader(train_dataset, batch_size=2, sampler=sampler, drop_last=True)
+    train_dataloader = DataLoader(train_dataset, batch_size=2, sampler=sampler, drop_last=True, collate_fn=utilities.collate_fn)
 
     for batch in train_dataloader:
         features = batch

@@ -1,6 +1,5 @@
 from typing import Any
 import logging
-from math import log
 
 import torch
 
@@ -71,3 +70,12 @@ def categorical_one_hot_encoding(sample: Any, categorical_bound: int):
 
     sample['features'] = one_hot_labels
     return sample
+
+def collate_fn(batch):
+    numeric = [item[0] for item in batch][0]
+    categorical = [item[1] for item in batch][0].view(8, 288)
+    labels = [item[2] for item in batch][0]
+
+    print(numeric.shape, categorical.shape, labels.shape)
+
+    return torch.cat((numeric, categorical), dim=1), labels

@@ -65,11 +65,10 @@ class CustomDataset(Dataset):
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx): idx = idx.tolist()
-        if self.labels is not None: label = torch.tensor(self.labels.iloc[idx].tolist(), dtype=torch.long)
+        if self.labels is not None: labels = torch.tensor(self.labels.iloc[idx].tolist(), dtype=torch.long)
 
         numeric_sample = {
                 'features': torch.tensor(self.numeric_data.iloc[idx].values, dtype=torch.float32),
-                'label': label,
                 'stats': self.stats,
             }
         
@@ -78,20 +77,16 @@ class CustomDataset(Dataset):
 
         categorical_sample = {
                 'features': torch.tensor(self.categorical_data.iloc[idx].values, dtype=torch.float32),
-                'label': label,
                 'stats': self.stats,
             }
         if self.categorical_transformation:
             categorical_sample = self.categorical_transformation(categorical_sample)
 
         target_sample = {
-                'label': label,
-                'columns': self.categorical_data.columns,
+                'labels': labels,
                 'stats': self.stats,
             }
         if self.target_transformation:
             target_sample = self.target_transformation(target_sample)
 
-        print(numeric_sample['features'].shape, categorical_sample['features'].shape)
-
-        return [numeric_sample['features'], categorical_sample['features']]
+        return [numeric_sample['features'], categorical_sample['features'], target_sample['labels']]
