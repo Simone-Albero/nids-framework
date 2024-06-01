@@ -22,8 +22,10 @@ def categorical_pre_processing(
 
 
 def bound_transformation(sample: Dict[str, Any], bound: int) -> Dict[str, Any]:
-    features = sample["data"]
+    features, stats = sample["data"], sample["stats"]
     features = torch.clamp(features, min=-bound, max=bound)
+    stats["min"] = torch.clamp(stats["min"], min=-bound)
+    stats["max"] = torch.clamp(stats["max"], max=bound)
 
     logging.debug(f"Bound transformation result:\n{features}")
 
@@ -31,11 +33,11 @@ def bound_transformation(sample: Dict[str, Any], bound: int) -> Dict[str, Any]:
     return sample
 
 
-def log_transformation(sample: Dict[str, Any], bound: int) -> Dict[str, Any]:
+def log_transformation(sample: Dict[str, Any]) -> Dict[str, Any]:
     features, stats = sample["data"], sample["stats"]
 
-    min_values = torch.clamp(stats["min"], min=-bound)
-    max_values = torch.clamp(stats["max"], max=bound)
+    min_values = stats["min"]
+    max_values = stats["max"]
     gaps = max_values - min_values
 
     mask = gaps != 0
@@ -55,7 +57,7 @@ def categorical_value_encoding(
     sample: Dict[str, Any], categorical_bound: int
 ) -> Dict[str, Any]:
     features, stats = sample["data"], sample["stats"]
-    categorical_levels = stats["categorical_levels"][:, :categorical_bound].t()
+    categorical_levels = stats["categorical_levels"][:, :(categorical_bound - 1)].t()
 
     value_encoding = torch.zeros_like(features)
     for col_idx, col in enumerate(features.t()):

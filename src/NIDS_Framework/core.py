@@ -1,4 +1,5 @@
 import logging
+import time
 
 from rich.logging import RichHandler
 from sklearn.model_selection import train_test_split
@@ -76,7 +77,11 @@ def data_loader_test():
     def categorical_conversion(dataset, properties, categorical_levels=32):
         utilities.categorical_pre_processing(dataset, properties, categorical_levels)
 
+    start_time = time.time()
     X, y = proc.fit()
+    end_time = time.time()
+    print(f"\nPreProcessing execution time: {end_time - start_time} s\n")
+
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
     )
@@ -95,10 +100,14 @@ def data_loader_test():
         return utilities.bound_transformation(sample, bound)
 
     @trans_builder.add_step(order=2)
-    def log_trans(sample, bound=1000000):
-        return utilities.log_transformation(sample, bound)
+    def log_trans(sample):
+        return utilities.log_transformation(sample)
 
     numeric_transform = trans_builder.build()
+
+    # @trans_builder.add_step(order=1)
+    # def categorical_value(sample, categorical_levels=32):
+    #     return utilities.categorical_value_encoding(sample, categorical_levels)
 
     @trans_builder.add_step(order=1)
     def categorical_one_hot(sample, categorical_levels=32):
@@ -116,10 +125,17 @@ def data_loader_test():
         train_dataset, batch_size=64, sampler=train_sampler, drop_last=True
     )
 
+    start_time = time.time()
+    num_samples = 100
+    iter_num = 0
     for batch in train_dataloader:
         features, labels = batch
-        print(features.shape, labels.shape)
-        break
+        iter_num += 1
+        #print(features.shape, labels.shape)
+        if iter_num == num_samples: break
+
+    end_time = time.time()
+    print(f"\nOn-site transformations for {num_samples} samples take: {end_time - start_time} s\n")
 
 def main():
     debug_level = logging.INFO
