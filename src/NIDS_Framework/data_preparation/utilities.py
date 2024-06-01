@@ -1,50 +1,61 @@
-from typing import Any
+from typing import Dict, Any, Tuple
 import logging
 
 import torch
+import pandas as pd
+
+from data_preparation.processor import DatasetProperties
 
 
-def bound_transformation(sample: Any, bound: int):
-    """Convert numerical values to floats, and remove out of range values.
+def categorical_pre_processing(
+    dataset: pd.DataFrame, properties: DatasetProperties, categorical_levels=32
+) -> None:
+    logging.debug(
+        f"Mapping {len(properties.categorical_features)} categorical features to {categorical_levels} numeric tags..."
+    )
 
-    Args:
-        sample: The input sample.
-        bound: The bound to filter values.
-    """
-    features = sample['features']
-    features = torch.clamp(features,  min=-bound, max=bound)
+    for col in properties.categorical_features:
+        unique_values = dataset[col].unique()[: (categorical_levels - 1)]
+        value_map = {val: idx for idx, val in enumerate(unique_values)}
 
-    logging.debug(f'Bound transformation shape: {features.shape}')
+        dataset[col] = dataset[col].apply(lambda x: value_map.get(x, -1) + 1)
 
-    sample['features'] = features
+
+def bound_transformation(sample: Dict[str, Any], bound: int) -> Dict[str, Any]:
+    features = sample["data"]
+    features = torch.clamp(features, min=-bound, max=bound)
+
+    logging.debug(f"Bound transformation result:\n{features}")
+
+    sample["data"] = features
     return sample
 
 
-def log_transformation(sample: Any, bound: int):
-    """Apply log transformation to the features in the sample.
+def log_transformation(sample: Dict[str, Any], bound: int) -> Dict[str, Any]:
+    features, stats = sample["data"], sample["stats"]
 
-    Args:
-        sample: The input sample.
-    """
-    features, stats = sample['features'], sample['stats']
-    
-    min_values = torch.clamp(stats['min'],  min=-bound)
-    max_values = torch.clamp(stats['max'],  max=bound)
+    min_values = torch.clamp(stats["min"], min=-bound)
+    max_values = torch.clamp(stats["max"], max=bound)
     gaps = max_values - min_values
 
     mask = gaps != 0
-    features = torch.where(mask, torch.log(features + 1) / torch.log(gaps + 1), torch.zeros_like(features))
+    features = torch.where(
+        mask, torch.log(features + 1) / torch.log(gaps + 1), torch.zeros_like(features)
+    )
     features = torch.where(mask, features, torch.zeros_like(features))
-    
-    logging.debug(f'Log transformation shape: {features.shape}')
 
-    sample['features'] = features
+    logging.debug(f"Log transformation result:\n{features}")
+
+    sample["data"] = features
     return sample
 
 
-def categorical_value_encoding(sample: Any, categorical_bound: int):
-    features, stats = sample['features'], sample['stats']
-    categorical_levels = stats['categorical_levels'][:, :categorical_bound].t()
+# Deprecated
+def categorical_value_encoding(
+    sample: Dict[str, Any], categorical_bound: int
+) -> Dict[str, Any]:
+    features, stats = sample["data"], sample["stats"]
+    categorical_levels = stats["categorical_levels"][:, :categorical_bound].t()
 
     value_encoding = torch.zeros_like(features)
     for col_idx, col in enumerate(features.t()):
@@ -53,29 +64,19 @@ def categorical_value_encoding(sample: Any, categorical_bound: int):
             if mask.numel() > 0:
                 value_encoding[row_idx, col_idx] = mask.item() + 1
 
-    logging.debug(f'Categorical value transformation shape: {value_encoding.shape}')
-
-    sample['features'] = value_encoding
+    sample["data"] = value_encoding
     return sample
 
-def categorical_one_hot_encoding(sample: Any, categorical_bound: int):
-    features = sample['features']
 
-    one_hot_encode = lambda label: torch.eye(categorical_bound)[label.long()]
-    one_hot_labels = torch.stack([one_hot_encode(label) for row in features for label in row])
-    one_hot_labels = one_hot_labels.view(features.size(0), features.size(1), -1)
+def one_hot_encoding(sample: Dict[str, Any], categorical_levels: int) -> Dict[str, Any]:
+    features = sample["data"]
 
+    one_hot = torch.nn.functional.one_hot(features, num_classes=categorical_levels)
+    logging.debug(f"One-hot transformation result:\n{one_hot}")
 
-    logging.debug(f'Categorical one-hot transformation shape: {one_hot_labels.shape}')
+    if len(one_hot.shape) == 2:
+        sample["data"] = one_hot.flatten()
+    elif len(one_hot.shape) > 2:
+        sample["data"] = one_hot.view(one_hot.size(0), -1)
 
-    sample['features'] = one_hot_labels
     return sample
-
-def collate_fn(batch):
-    numeric = [item[0] for item in batch][0]
-    categorical = [item[1] for item in batch][0].view(8, 288)
-    labels = [item[2] for item in batch][0]
-
-    print(numeric.shape, categorical.shape, labels.shape)
-
-    return torch.cat((numeric, categorical), dim=1), labels
