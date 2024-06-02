@@ -1,4 +1,4 @@
-from typing import List, Callable, Tuple, Optional
+from typing import List, Callable, Tuple, Optional, Dict
 import logging
 
 import pandas as pd
@@ -42,7 +42,7 @@ class TabularDataset(Dataset):
         #     for col in categorical_data.columns
         # ]
 
-        self._stats = {
+        self._stats : Dict[str, torch.Tensor] = {
             "mean": torch.tensor(numeric_data.mean().values, dtype=torch.float32),
             "std": torch.tensor(numeric_data.std().values, dtype=torch.float32),
             "min": torch.tensor(numeric_data.min().values, dtype=torch.float32),

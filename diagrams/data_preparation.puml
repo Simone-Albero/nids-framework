@@ -1,0 +1,122 @@
+@startuml
+
+!pragma import typing::List, typing::Dict, typing::Optional, typing::Tuple, typing::Any, typing::Callable
+!pragma import pandas.DataFrame
+!pragma import torch
+!pragma import torchvision.transforms.Compose
+
+package "data_preparation" {
+    package processor {
+        class DatasetProperties {
+            + features : List[str]
+            + categorical_features : List[str]
+            + numeric_features : List[str]
+            + labels : List[str] <<optional>>
+            + benign_label : str <<optional>>
+
+            + __init__(features: List[str], categorical_features: List[str], labels: Optional[List[str]], benign_label: Optional[str]) : None
+        }
+
+        class Processor {
+            - properties : DatasetProperties
+            - df : pandas.DataFrame
+            - transformations : List[PreTransformation]
+            - label_mapping : Dict[Any, int]
+
+            + __init__(dataset_path: str, properties: DatasetProperties, label_conversion: bool) : None
+            - _load_df(dataset_path: str) : pandas.DataFrame
+            - _label_conversion() : pandas.DataFrame
+            + add_step(transform_function: PreTransformation, order: int) : None
+            + fit() : Tuple[pandas.DataFrame, pandas.DataFrame]
+        }
+
+        abstract class PreTransformation {
+            + order: int
+
+            + __init__(order: int) : None
+            {abstract} + __call__(dataset: pandas.DataFrame, properties: DatasetProperties) : None
+        }
+    }
+
+    package transformation_builder {
+        class TransformationBuilder {
+            - transformations : List[PostTransformation]
+
+            + __init__() : None
+            + add_step(transform_function: PostTransformation, order: int) : None
+            + build() : List[PostTransformation]
+        }
+
+        abstract class PostTransformation {
+            + order: int
+
+            + __init__(sample: Dict[str, Any]) : Dict[str, Any]
+            {abstract} + __call__(dataset: pandas.DataFrame, properties: DatasetProperties) : None
+        }
+    }
+
+    package random_sw_sampler {
+        class RandomSlidingWindowSampler {
+            + dataset : torch.utils.data.Dataset
+            + window_size : int
+            + num_samples : int
+
+            + __init__(dataset: Dataset, window_size: int) : None
+            + __len__() : int
+            + __iter__() : Iterator
+        }
+    }
+
+    package tabular_dataset {
+        class TabularDataset {
+            + numeric_data : torch.Tensor
+            + categorical_data : torch.Tensor
+            + labels : torch.Tensor
+            - numeric_transformation : torchvision.transforms.Compose
+            - categorical_transformation : torchvision.transforms.Compose
+            - labels_transformation : torchvision.transforms.Compose
+            - stats : Dict[str, torch.Tensor]
+
+            + __init__(numeric_data: pandas.DataFrame, categorical_data: pandas.DataFrame, labels: Optional[pandas.DataFrame]) : None
+            + get_numeric_transformation() : torchvision.transforms.Compose
+            + set_numeric_transformation(transformations: List[Callable]) : None
+            + get_categorical_transformation() : torchvision.transforms.Compose
+            + set_categorical_transformation(transformations: List[Callable]) : None
+            + get_labels_transformation() : torchvision.transforms.Compose
+            + set_labels_transformation(transformations: List[Callable]) : None
+            + __len__() : int
+            + __getitem__(idx: List[int]) : Tuple[Tensor, Tensor]
+        }
+    }
+}
+
+package torch.utils.data {
+    abstract class Sampler {
+        {abstract} + __len__() : int
+        {abstract} + __iter__() : Iterator
+    }
+
+    abstract class Dataset {
+        {abstract} + __len__() : int
+        {abstract} + __getitem__(idx: List<int>) : Tuple<Tensor, Tensor>
+    }
+}
+
+Processor --> DatasetProperties : properties
+Processor --> PreTransformation : transformations
+'Processor --> pandas.DataFrame : df
+
+TransformationBuilder --> PostTransformation : transformations
+
+Sampler <|-- RandomSlidingWindowSampler
+RandomSlidingWindowSampler --> Dataset : dataset
+
+Dataset <|-- TabularDataset
+/'TabularDataset --> torch.Tensor : numeric_data
+TabularDataset --> torch.Tensor : categorical_data
+TabularDataset --> torch.Tensor : labels
+TabularDataset --> torchvision.transforms.Compose : numeric_transformation
+TabularDataset --> torchvision.transforms.Compose : categorical_transformation
+TabularDataset --> torchvision.transforms.Compose : labels_transformation'/
+
+@enduml
