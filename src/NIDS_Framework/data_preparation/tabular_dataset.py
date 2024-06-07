@@ -7,7 +7,7 @@ import torch
 from data_preparation import tabular_modeling
 
 
-class TabularDataset(tabular_modeling.TabularAbstraction):
+class TabularDataset(tabular_modeling.TabularModeling):
 
     __slots__ = [
         "_stats",

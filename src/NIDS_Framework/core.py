@@ -75,7 +75,7 @@ def data_loader_test():
     proc = processor.Processor(dataset_path, prop, True)
 
     @proc.add_step(order=1)
-    @utils.trace_stats(interval=0.1, file_path="logs/example_log.txt")
+    @utils.trace_stats(interval=0.1, file_path="logs/log.csv", reset_logs=True)
     def categorical_conversion(dataset, properties, categorical_levels=64):
         utilities.categorical_pre_processing(dataset, properties, categorical_levels)
 
