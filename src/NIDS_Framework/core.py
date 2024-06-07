@@ -12,6 +12,7 @@ from data_preparation import (
     utilities,
     transformation_builder,
 )
+import utilities as utils
 
 
 def data_loader_test():
@@ -74,7 +75,8 @@ def data_loader_test():
     proc = processor.Processor(dataset_path, prop, True)
 
     @proc.add_step(order=1)
-    def categorical_conversion(dataset, properties, categorical_levels=32):
+    @utils.trace_stats(interval=0.1, file_path="logs/example_log.txt")
+    def categorical_conversion(dataset, properties, categorical_levels=64):
         utilities.categorical_pre_processing(dataset, properties, categorical_levels)
 
     start_time = time.time()
@@ -110,7 +112,7 @@ def data_loader_test():
     #     return utilities.categorical_value_encoding(sample, categorical_levels)
 
     @trans_builder.add_step(order=1)
-    def categorical_one_hot(sample, categorical_levels=32):
+    def categorical_one_hot(sample, categorical_levels=64):
         return utilities.one_hot_encoding(sample, categorical_levels)
 
     categorical_transform = trans_builder.build()
@@ -119,7 +121,7 @@ def data_loader_test():
     train_dataset.categorical_transformation = categorical_transform
 
     train_sampler = random_sw_sampler.RandomSlidingWindowSampler(
-        train_dataset, window_size=8
+        train_dataset, window_size=32
     )
     train_dataloader = DataLoader(
         train_dataset, batch_size=64, sampler=train_sampler, drop_last=True
@@ -130,9 +132,10 @@ def data_loader_test():
     iter_num = 0
     for batch in train_dataloader:
         features, labels = batch
-        iter_num += 1
-        #print(features.shape, labels.shape)
-        if iter_num == num_samples: break
+        #iter_num += 1
+        print(features.shape, labels.shape)
+        #if iter_num == num_samples: break
+        break
 
     end_time = time.time()
     print(f"\nOn-site transformations for {num_samples} samples take: {end_time - start_time} s\n")

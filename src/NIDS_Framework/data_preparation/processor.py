@@ -78,21 +78,18 @@ class Processor:
             for idx, label in enumerate(self._df[self._properties.labels].unique())
         }
         return np.vectorize(self._label_mapping.get)(self._df[self._properties.labels])
-
+    
     def add_step(self, order: int) -> Callable:
-        def decorator(transform_function: Callable) -> Callable:
-            def transform_sample(
-                df: pd.DataFrame, properties: DatasetProperties
-            ) -> Callable:
-                return transform_function(df, properties)
-
-            transform_sample.order = order
-            self._transformations.append(transform_sample)
+        def decorator(func: Callable) -> Callable:
+            def wrapper(*args, **kwargs):
+                return func(*args, **kwargs)
+            
+            wrapper.order = order
+            self._transformations.append(wrapper)
             logging.info(
-                f"Added '{transform_function.__name__}' to preprocessing pipeline."
+                f"Added '{func.__name__}' to preprocessing pipeline with order {order}."
             )
-            return transform_sample
-
+            return wrapper
         return decorator
 
     def fit(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -105,3 +102,5 @@ class Processor:
 
         logging.info("Completed transformations.")
         return self._df[self._properties.features], self._df[self._properties.labels]
+
+

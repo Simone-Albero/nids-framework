@@ -10,19 +10,18 @@ class TransformationBuilder:
 
     def __init__(self) -> None:
         self._transformations: List[Callable] = []
-
+    
     def add_step(self, order: int) -> Callable:
-        def decorator(transform_function: Callable) -> Callable:
-            def transform_sample(sample) -> Callable:
-                return transform_function(sample)
-
-            transform_sample.order = order
-            self._transformations.append(transform_sample)
+        def decorator(func: Callable) -> Callable:
+            def wrapper(*args, **kwargs):
+                return func(*args, **kwargs)
+            
+            wrapper.order = order
+            self._transformations.append(wrapper)
             logging.info(
-                f"Added '{transform_function.__name__}' to transformations pipeline."
+                f"Added '{func.__name__}' to transformations pipeline with order {order}."
             )
-            return transform_sample
-
+            return wrapper
         return decorator
 
     def build(self) -> List[Callable]:
