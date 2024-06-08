@@ -1,5 +1,6 @@
 from typing import Callable, List
 import logging
+import functools
 
 
 class TransformationBuilder:
@@ -13,6 +14,7 @@ class TransformationBuilder:
     
     def add_step(self, order: int) -> Callable:
         def decorator(func: Callable) -> Callable:
+            @functools.wraps(func)
             def wrapper(*args, **kwargs):
                 return func(*args, **kwargs)
             

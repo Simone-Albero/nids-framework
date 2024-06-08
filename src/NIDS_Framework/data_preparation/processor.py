@@ -1,6 +1,7 @@
 from typing import List, Optional, Callable, Dict, Any, Tuple
 import os
 import logging
+import functools
 
 import pandas as pd
 import numpy as np
@@ -81,6 +82,7 @@ class Processor:
     
     def add_step(self, order: int) -> Callable:
         def decorator(func: Callable) -> Callable:
+            @functools.wraps(func)
             def wrapper(*args, **kwargs):
                 return func(*args, **kwargs)
             

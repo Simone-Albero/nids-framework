@@ -4,6 +4,7 @@ import multiprocessing
 import statistics
 import logging
 import os
+import functools
 
 import psutil
 
@@ -47,6 +48,7 @@ def trace_stats(
     interval: float = 0.1, file_path: str = "logs/log.csv", reset_logs: bool = False
 ) -> Callable:
     def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
         def wrapper(*args, **kwargs):
             stop_event = multiprocessing.Event()
             stats_queue = multiprocessing.Queue()
