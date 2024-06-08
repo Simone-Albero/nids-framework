@@ -50,8 +50,8 @@ package "data_preparation" {
         abstract class PostTransformation {
             + order: int
 
-            + __init__(sample: Dict[str, Any]) : Dict[str, Any]
-            {abstract} + __call__(dataset: pandas.DataFrame, properties: DatasetProperties) : None
+            + __init__(order: int) : None
+            {abstract} + __call__(sample: Dict[str, Any]) : Dict[str, Any]
         }
     }
 
@@ -67,25 +67,32 @@ package "data_preparation" {
         }
     }
 
-    package tabular_dataset {
-        class TabularDataset {
+    package tabular_modeling {
+        class TabularModeling {
             + numeric_data : torch.Tensor
             + categorical_data : torch.Tensor
             + labels : torch.Tensor
             - numeric_transformation : torchvision.transforms.Compose
             - categorical_transformation : torchvision.transforms.Compose
             - labels_transformation : torchvision.transforms.Compose
-            - stats : Dict[str, torch.Tensor]
 
-            + __init__(numeric_data: pandas.DataFrame, categorical_data: pandas.DataFrame, labels: Optional[pandas.DataFrame]) : None
             + get_numeric_transformation() : torchvision.transforms.Compose
             + set_numeric_transformation(transformations: List[Callable]) : None
             + get_categorical_transformation() : torchvision.transforms.Compose
             + set_categorical_transformation(transformations: List[Callable]) : None
             + get_labels_transformation() : torchvision.transforms.Compose
             + set_labels_transformation(transformations: List[Callable]) : None
+            + applyTransformation(idx: List[int], stats: Dict[str, torch.Tensor]) : Tuple[torch.Tensor, torch.Tensor, torch.Tensor]
+        }
+    }
+
+    package tabular_dataset {
+        class TabularDataset {
+            - stats : Dict[str, torch.Tensor]
+
+            + __init__(numeric_data: pandas.DataFrame, categorical_data: pandas.DataFrame, labels: Optional[pandas.DataFrame]) : None
             + __len__() : int
-            + __getitem__(idx: List[int]) : Tuple[Tensor, Tensor]
+            + __getitem__(idx: List[int]) : Tuple[torch.Tensor, torch.Tensor]
         }
     }
 }
@@ -111,12 +118,6 @@ TransformationBuilder --> PostTransformation : transformations
 Sampler <|-- RandomSlidingWindowSampler
 RandomSlidingWindowSampler --> Dataset : dataset
 
-Dataset <|-- TabularDataset
-/'TabularDataset --> torch.Tensor : numeric_data
-TabularDataset --> torch.Tensor : categorical_data
-TabularDataset --> torch.Tensor : labels
-TabularDataset --> torchvision.transforms.Compose : numeric_transformation
-TabularDataset --> torchvision.transforms.Compose : categorical_transformation
-TabularDataset --> torchvision.transforms.Compose : labels_transformation'/
-
+Dataset <|-- TabularModeling
+TabularModeling <|-- TabularDataset
 @enduml

@@ -15,7 +15,6 @@ class TabularModeling(ABC, Dataset):
         "_numeric_transformation",
         "_categorical_transformation",
         "_labels_transformation",
-        "_stats",
     ]
 
     def __init__(
@@ -76,21 +75,21 @@ class TabularModeling(ABC, Dataset):
     ]:
         numeric_sample = {
             "data": self.numeric_data[idx, :],
-            "stats": self._stats,
+            "stats": stats,
         }
         if self._numeric_transformation:
             numeric_sample = self._numeric_transformation(numeric_sample)
 
         categorical_sample = {
             "data": self.categorical_data[idx, :],
-            "stats": self._stats,
+            "stats": stats,
         }
         if self._categorical_transformation:
             categorical_sample = self._categorical_transformation(categorical_sample)
 
         label_sample = {
             "data": self.labels[idx],
-            "stats": self._stats,
+            "stats": stats,
         }
         if self._labels_transformation:
             label_sample = self._labels_transformation(label_sample)
