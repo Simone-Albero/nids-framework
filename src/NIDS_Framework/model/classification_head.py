@@ -5,13 +5,18 @@ import torch.nn as nn
 class ClassificationHead(nn.Module):
 
     __slots__ = [
-        "fc_out",
+        "classifier",
     ]
 
-    def __init__(self, input_dim, model_dim) -> None:
+    def __init__(self, input_dim, num_classes, hidden_dim=256):
         super(ClassificationHead, self).__init__()
+        self.classifier = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, num_classes),
+            nn.Softmax(dim=-1)
+        )
+        
+    def forward(self, x):
+        return self.classifier(x)
 
-        self.fc_out = nn.Linear(model_dim, input_dim)
-
-    def forward(self, x) -> torch.Tensor:
-        return self.fc_out(x)

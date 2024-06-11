@@ -4,6 +4,7 @@ import time
 from rich.logging import RichHandler
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
+import torch
 
 from data_preparation import (
     random_sw_sampler,
@@ -13,6 +14,7 @@ from data_preparation import (
     transformation_builder,
 )
 import utilities as utils
+from model import nn_classifier
 
 
 def data_loader_test():
@@ -75,14 +77,11 @@ def data_loader_test():
     proc = processor.Processor(dataset_path, prop, True)
 
     @proc.add_step(order=1)
-    @utils.trace_stats(interval=0.1, file_path="logs/log.csv", reset_logs=True)
+    #@utils.trace_stats(interval=0.1, file_path="logs/log.csv", reset_logs=True)
     def categorical_conversion(dataset, properties, categorical_levels=64):
         utilities.categorical_pre_processing(dataset, properties, categorical_levels)
 
-    start_time = time.time()
     X, y = proc.fit()
-    end_time = time.time()
-    print(f"\nPreProcessing execution time: {end_time - start_time} s\n")
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
@@ -127,18 +126,18 @@ def data_loader_test():
         train_dataset, batch_size=64, sampler=train_sampler, drop_last=True
     )
 
-    start_time = time.time()
-    num_samples = 100
-    iter_num = 0
-    for batch in train_dataloader:
-        features, labels = batch
-        #iter_num += 1
-        print(features.shape, labels.shape)
-        #if iter_num == num_samples: break
-        break
+    inputs, labels = next(iter(train_dataloader))
+    input_shape = inputs.shape
+    print(input_shape)
 
-    end_time = time.time()
-    print(f"\nOn-site transformations for {num_samples} samples take: {end_time - start_time} s\n")
+    device = ('cuda' if torch.cuda.is_available() else 'cpu')
+    model = nn_classifier.NNClassifier(input_shape[-1]).to(device=device)
+
+    for inputs, labels in train_dataloader:
+        output_tensor = model(inputs)
+        print(output_tensor.shape)
+        print(output_tensor)
+        break
 
 def main():
     debug_level = logging.INFO

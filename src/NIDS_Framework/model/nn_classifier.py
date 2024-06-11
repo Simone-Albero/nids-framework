@@ -16,12 +16,12 @@ class NNClassifier(nn.Module):
         "classification_head",
     ]
 
-    def __init__(self, input_dim, window_size, model_dim, num_heads, num_layers, dim_feedforward, dropout=0.1):
+    def __init__(self, input_dim, num_heads=8, num_layers=3, dim_feedforward=2048, output_dim=9, dropout=0.1):
         super(NNClassifier, self).__init__()
 
-        self.input_encoding = InputEncoder(input_dim, model_dim, window_size)
-        self.transformer_block = TransformerEncoderOnlyModel(model_dim, num_heads, num_layers, dim_feedforward, dropout)
-        self.classification_head = ClassificationHead(input_dim, model_dim)
+        self.input_encoding = InputEncoder(input_dim)
+        self.transformer_block = TransformerEncoderOnlyModel(80, num_heads, num_layers, dim_feedforward, dropout)
+        self.classification_head = ClassificationHead(80, output_dim)
         
         
     def forward(self, x):
