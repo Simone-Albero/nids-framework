@@ -9,7 +9,7 @@ class TransformerEncoderOnlyModel(nn.Module):
         "transformer_encoder",
     ]
 
-    def __init__(self, input_dim, num_heads=8, num_layers=3, dim_feedforward=2048, dropout=0.1) -> None:
+    def __init__(self, input_dim, num_heads=4, num_layers=3, dim_feedforward=2048, dropout=0.1) -> None:
         super(TransformerEncoderOnlyModel, self).__init__()
 
         encoder_layers = TransformerEncoderLayer(input_dim, num_heads, dim_feedforward, dropout, batch_first=True)

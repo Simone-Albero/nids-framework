@@ -77,10 +77,10 @@ def data_loader_test():
     proc = processor.Processor(dataset_path, prop, True)
 
     @proc.add_step(order=1)
-    #@utils.trace_stats(interval=0.1, file_path="logs/log.csv", reset_logs=True)
-    def categorical_conversion(dataset, properties, categorical_levels=64):
+    #@utils.trace_stats()
+    def categorical_conversion(dataset, properties, categorical_levels=32):
         utilities.categorical_pre_processing(dataset, properties, categorical_levels)
-
+    
     X, y = proc.fit()
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -111,7 +111,7 @@ def data_loader_test():
     #     return utilities.categorical_value_encoding(sample, categorical_levels)
 
     @trans_builder.add_step(order=1)
-    def categorical_one_hot(sample, categorical_levels=64):
+    def categorical_one_hot(sample, categorical_levels=32):
         return utilities.one_hot_encoding(sample, categorical_levels)
 
     categorical_transform = trans_builder.build()
@@ -120,7 +120,7 @@ def data_loader_test():
     train_dataset.categorical_transformation = categorical_transform
 
     train_sampler = random_sw_sampler.RandomSlidingWindowSampler(
-        train_dataset, window_size=32
+        train_dataset, window_size=8
     )
     train_dataloader = DataLoader(
         train_dataset, batch_size=64, sampler=train_sampler, drop_last=True

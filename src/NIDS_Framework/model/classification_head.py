@@ -8,15 +8,16 @@ class ClassificationHead(nn.Module):
         "classifier",
     ]
 
-    def __init__(self, input_dim, num_classes, hidden_dim=256):
+    def __init__(self, input_dim, hidden_dim=256):
         super(ClassificationHead, self).__init__()
+
         self.classifier = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, num_classes),
-            nn.Softmax(dim=-1)
+            nn.Linear(hidden_dim, 1),
+            nn.Sigmoid()
         )
         
     def forward(self, x):
+        x = x[...,-1,:] # last token of the context window
         return self.classifier(x)
 
