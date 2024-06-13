@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import torch
 
-from data_preparation.processor import DatasetProperties
+from data.processor import DatasetProperties
 
 
 def base_pre_processing(

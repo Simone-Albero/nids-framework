@@ -6,12 +6,12 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 import torch
 
-from data_preparation import (
-    random_sw_sampler,
-    tabular_dataset,
+from data import (
     processor,
     utilities,
     transformation_builder,
+    samplers, 
+    tabular_datasets,
 )
 from utilities import trace_stats
 from model import nn_classifier
@@ -95,10 +95,10 @@ def data_loader_test():
         X, y, test_size=0.2, random_state=42
     )
 
-    train_dataset = tabular_dataset.TabularDataset(
+    train_dataset = tabular_datasets.TabularDataset(
         X_train[prop.numeric_features], X_train[prop.categorical_features], y_train
     )
-    test_dataset = tabular_dataset.TabularDataset(
+    test_dataset = tabular_datasets.TabularDataset(
         X_test[prop.numeric_features], X_test[prop.categorical_features], y_test
     )
 
@@ -118,7 +118,7 @@ def data_loader_test():
 
     train_dataset.categorical_transformation = trans_builder.build()
 
-    train_sampler = random_sw_sampler.RandomSlidingWindowSampler(
+    train_sampler = samplers.RandomSlidingWindowSampler(
         train_dataset, window_size=8
     )
     train_dataloader = DataLoader(

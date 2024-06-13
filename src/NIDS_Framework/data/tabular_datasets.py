@@ -1,5 +1,6 @@
-from typing import Optional, List, Callable, Tuple, Dict
+from typing import List, Tuple, Optional, Dict, Callable
 from abc import ABC, abstractmethod
+import logging
 
 import pandas as pd
 import torch
@@ -7,7 +8,7 @@ from torch.utils.data import Dataset
 from torchvision.transforms import Compose
 
 
-class TabularModeling(ABC, Dataset):
+class TabularBase(ABC, Dataset):
     __slots__ = [
         "numeric_data",
         "categorical_data",
@@ -95,3 +96,42 @@ class TabularModeling(ABC, Dataset):
             label_sample = self._labels_transformation(label_sample)
 
         return numeric_sample, categorical_sample, label_sample
+
+
+class TabularDataset(TabularBase):
+
+    __slots__ = [
+        "_stats",
+    ]
+
+    def __init__(
+        self,
+        numeric_data: pd.DataFrame,
+        categorical_data: pd.DataFrame,
+        labels: Optional[pd.DataFrame] = None,
+    ) -> None:
+        super().__init__(numeric_data, categorical_data, labels)
+
+        self._stats: Dict[str, torch.Tensor] = {
+            "mean": torch.tensor(numeric_data.mean().values, dtype=torch.float32),
+            "std": torch.tensor(numeric_data.std().values, dtype=torch.float32),
+            "min": torch.tensor(numeric_data.min().values, dtype=torch.float32),
+            "max": torch.tensor(numeric_data.max().values, dtype=torch.float32),
+        }
+
+    def __len__(self) -> int:
+        return len(self.labels)
+
+    def __getitem__(self, idx: List[int]) -> Tuple[torch.Tensor, torch.Tensor]:
+        numeric_sample, categorical_sample, label_sample = self.applyTransformation(
+            idx, self._stats
+        )
+
+        logging.debug(
+            f"Numeric sample shape: {numeric_sample['data'].shape} Categorical sample shape: {categorical_sample['data'].shape}."
+        )
+        features = torch.cat(
+            (numeric_sample["data"], categorical_sample["data"]), dim=-1
+        )
+
+        return features, label_sample["data"]
