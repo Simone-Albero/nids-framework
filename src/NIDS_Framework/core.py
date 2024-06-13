@@ -1,10 +1,11 @@
 import logging
+from rich.logging import RichHandler
 
 import pandas as pd
-from rich.logging import RichHandler
 from sklearn.model_selection import train_test_split
-from torch.utils.data import DataLoader
 import torch
+from torch import nn, optim
+from torch.utils.data import DataLoader
 
 from data import (
     processor,
@@ -15,6 +16,7 @@ from data import (
 )
 from utilities import trace_stats
 from model import nn_classifier
+from training import trainer
 
 
 def data_loader_test():
@@ -132,11 +134,11 @@ def data_loader_test():
     device = ('cuda' if torch.cuda.is_available() else 'cpu')
     model = nn_classifier.NNClassifier(input_shape[-1]).to(device=device)
 
-    for inputs, labels in train_dataloader:
-        output_tensor = model(inputs)
-        print(output_tensor.shape, labels[...,-1].shape)
-        print((output_tensor - labels[...,-1]).shape)
-        break
+    criterion = nn.BCELoss() 
+    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+
+    train = trainer.Trainer(model, criterion, optimizer, train_dataloader)
+    train.fit(1)
 
 def main():
     debug_level = logging.INFO

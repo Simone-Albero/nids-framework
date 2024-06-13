@@ -16,7 +16,7 @@ class NNClassifier(nn.Module):
         "classification_head",
     ]
 
-    def __init__(self, input_dim, num_heads=4, num_layers=3, dim_feedforward=2048, dropout=0.1):
+    def __init__(self, input_dim, num_heads=4, num_layers=2, dim_feedforward=128, dropout=0.1):
         super(NNClassifier, self).__init__()
 
         self.input_encoding = InputEncoder(input_dim)

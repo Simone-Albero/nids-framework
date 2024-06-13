@@ -32,7 +32,7 @@ class TabularBase(ABC, Dataset):
         self.categorical_data: torch.Tensor = torch.tensor(
             categorical_data.values, dtype=torch.long
         )
-        self.labels: torch.Tensor = torch.tensor(labels.values, dtype=torch.long)
+        self.labels: torch.Tensor = torch.tensor(labels.values, dtype=torch.float32)
         self._numeric_transformation: Compose = []
         self._categorical_transformation: Compose = []
         self._labels_transformation: Compose = []
@@ -134,4 +134,4 @@ class TabularDataset(TabularBase):
             (numeric_sample["data"], categorical_sample["data"]), dim=-1
         )
 
-        return features, label_sample["data"]
+        return features, label_sample["data"][...,-1]
