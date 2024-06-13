@@ -1,7 +1,5 @@
 from typing import List, Optional, Callable, Dict, Any, Tuple
-import os
 import logging
-import functools
 
 import pandas as pd
 import numpy as np
@@ -43,66 +41,38 @@ class Processor:
         "_properties",
         "_df",
         "_transformations",
-        "_label_mapping",
+        "_transformations_mappings",
     ]
 
     def __init__(
         self,
-        dataset_path: str,
+        df: pd.DataFrame,
         properties: DatasetProperties,
-        label_conversion: Optional[bool] = False,
     ) -> None:
         self._properties: DatasetProperties = properties
-        self._df: pd.DataFrame = self._load_df(dataset_path)
+        self._df: pd.DataFrame = df
         self._transformations: List[Callable] = []
-        self._label_mapping: Dict[Any, int] = None
+        self._transformations_mappings: Dict[str, Dict[int, Any]] = {}
 
-        if label_conversion:
-            self._df[self._properties.labels] = self._label_conversion()
+    @property
+    def transformations(self) -> List[Callable]:
+        return self._transformations
 
-    def _load_df(self, dataset_path: str) -> pd.DataFrame:
-        if not dataset_path.lower().endswith(".csv"):
-            raise NotImplementedError("Only CSV files are supported.")
-
-        if not os.path.exists(dataset_path):
-            raise FileNotFoundError(
-                f"The dataset file was not found at the specified path: {dataset_path}"
-            )
-
-        logging.info(f"Reading dataset from: {dataset_path}...")
-        return pd.read_csv(dataset_path)
-
-    def _label_conversion(self) -> pd.DataFrame:
-        logging.info("Mapping original class labels to numeric values...")
-        self._label_mapping = {
-            label: idx
-            for idx, label in enumerate(self._df[self._properties.labels].unique())
-        }
-        return np.vectorize(self._label_mapping.get)(self._df[self._properties.labels])
+    @transformations.setter
+    def transformations(self, transformations: List[Callable]) -> None:
+        self._transformations = sorted(transformations, key=lambda transform_function: transform_function.order)
     
-    def add_step(self, order: int) -> Callable:
-        def decorator(func: Callable) -> Callable:
-            @functools.wraps(func)
-            def wrapper(*args, **kwargs):
-                return func(*args, **kwargs)
-            
-            wrapper.order = order
-            self._transformations.append(wrapper)
-            logging.info(
-                f"Added '{func.__name__}' to preprocessing pipeline with order {order}."
-            )
-            return wrapper
-        return decorator
-
     def fit(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
         logging.info(f"Applying {len(self._transformations)} transformation...")
-        for transform_function in sorted(
-            self._transformations,
-            key=lambda transform_function: transform_function.order,
-        ):
-            transform_function(self._df, self._properties)
+        for transform_function in self._transformations:
+            maping = transform_function(self._df, self._properties)
+            if maping is not None: self._transformations_mappings[transform_function.__name__] = maping
 
-        logging.info("Completed transformations.")
+        logging.info("Completed.")
         return self._df[self._properties.features], self._df[self._properties.labels]
+    
+    def decode(self, data: int, map_name: str):
+        if data not in self._transformations_mappings[map_name]: raise ValueError(f"Value {data} not in {map_name}.")
+        return self._transformations_mappings[map_name][data]
 
 

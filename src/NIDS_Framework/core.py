@@ -1,6 +1,6 @@
 import logging
-import time
 
+import pandas as pd
 from rich.logging import RichHandler
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
@@ -74,13 +74,21 @@ def data_loader_test():
     )
 
     dataset_path = 'dataset/NF-UNSW-NB15-v2.csv'
-    proc = processor.Processor(dataset_path, prop, True)
+    df = pd.read_csv(dataset_path)
+    proc = processor.Processor(df, prop)
 
-    @proc.add_step(order=1)
+    trans_builder = transformation_builder.TransformationBuilder()
+
+    @trans_builder.add_step(order=1)
     #@utils.trace_stats()
     def categorical_conversion(dataset, properties, categorical_levels=32):
         utilities.categorical_pre_processing(dataset, properties, categorical_levels)
-    
+
+    @trans_builder.add_step(order=2)
+    def bynary_label_conversion(dataset, properties):
+        utilities.bynary_label_conversion(dataset, properties)
+
+    proc.transformations = trans_builder.build()
     X, y = proc.fit()
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -94,8 +102,6 @@ def data_loader_test():
         X_test[prop.numeric_features], X_test[prop.categorical_features], y_test
     )
 
-    trans_builder = transformation_builder.TransformationBuilder()
-
     @trans_builder.add_step(order=1)
     def bound_trans(sample, bound=1000000):
         return utilities.bound_transformation(sample, bound)
@@ -104,20 +110,13 @@ def data_loader_test():
     def log_trans(sample):
         return utilities.log_transformation(sample)
 
-    numeric_transform = trans_builder.build()
-
-    # @trans_builder.add_step(order=1)
-    # def categorical_value(sample, categorical_levels=32):
-    #     return utilities.categorical_value_encoding(sample, categorical_levels)
+    train_dataset.numeric_transformation = trans_builder.build()
 
     @trans_builder.add_step(order=1)
     def categorical_one_hot(sample, categorical_levels=32):
         return utilities.one_hot_encoding(sample, categorical_levels)
 
-    categorical_transform = trans_builder.build()
-
-    train_dataset.numeric_transformation = numeric_transform
-    train_dataset.categorical_transformation = categorical_transform
+    train_dataset.categorical_transformation = trans_builder.build()
 
     train_sampler = random_sw_sampler.RandomSlidingWindowSampler(
         train_dataset, window_size=8

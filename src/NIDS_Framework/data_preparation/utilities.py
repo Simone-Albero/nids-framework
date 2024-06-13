@@ -53,6 +53,30 @@ def categorical_pre_processing(
         dataset[col] = dataset[col].apply(lambda x: value_map.get(x, -1) + 1)
 
 
+def multi_class_label_conversion(
+    dataset: pd.DataFrame, properties: DatasetProperties
+) -> None:
+    logging.debug("Mapping class labels to numeric values...")
+    mapping = {}
+    reverse = {}
+
+    for idx, label in enumerate(dataset[properties.labels].unique()):
+        mapping[label] = idx
+        reverse[idx] = label
+
+    dataset[properties.labels] = dataset[properties.labels].replace(mapping)
+    return reverse
+
+
+def bynary_label_conversion(
+    dataset: pd.DataFrame, properties: DatasetProperties
+) -> None:
+    logging.debug("Mapping class labels to numeric values...")
+    dataset[properties.labels] = np.where(
+        dataset[properties.labels] != properties.benign_label, 1, 0
+    )
+
+
 def bound_transformation(
     sample: Dict[str, Any], bound: int = 1000000
 ) -> Dict[str, Any]:
