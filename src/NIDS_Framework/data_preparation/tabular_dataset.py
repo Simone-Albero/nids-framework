@@ -21,18 +21,11 @@ class TabularDataset(tabular_modeling.TabularModeling):
     ) -> None:
         super().__init__(numeric_data, categorical_data, labels)
 
-        # max_len = max(len(categorical_data[col].value_counts().index) for col in categorical_data.columns)
-        # categorical_levels = [
-        #     list(categorical_data[col].value_counts().index) + [float('inf')] * (max_len - len(categorical_data[col].value_counts().index))
-        #     for col in categorical_data.columns
-        # ]
-
         self._stats: Dict[str, torch.Tensor] = {
             "mean": torch.tensor(numeric_data.mean().values, dtype=torch.float32),
             "std": torch.tensor(numeric_data.std().values, dtype=torch.float32),
             "min": torch.tensor(numeric_data.min().values, dtype=torch.float32),
             "max": torch.tensor(numeric_data.max().values, dtype=torch.float32),
-            #'categorical_levels': torch.tensor(categorical_levels, dtype=torch.float32),
         }
 
     def __len__(self) -> int:

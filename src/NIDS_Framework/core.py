@@ -13,7 +13,7 @@ from data_preparation import (
     utilities,
     transformation_builder,
 )
-import utilities as utils
+from utilities import trace_stats
 from model import nn_classifier
 
 
@@ -80,7 +80,7 @@ def data_loader_test():
     trans_builder = transformation_builder.TransformationBuilder()
 
     @trans_builder.add_step(order=1)
-    #@utils.trace_stats()
+    #@trace_stats()
     def categorical_conversion(dataset, properties, categorical_levels=32):
         utilities.categorical_pre_processing(dataset, properties, categorical_levels)
 
@@ -134,8 +134,8 @@ def data_loader_test():
 
     for inputs, labels in train_dataloader:
         output_tensor = model(inputs)
-        print(output_tensor.shape)
-        print(output_tensor)
+        print(output_tensor.shape, labels[...,-1].shape)
+        print((output_tensor - labels[...,-1]).shape)
         break
 
 def main():

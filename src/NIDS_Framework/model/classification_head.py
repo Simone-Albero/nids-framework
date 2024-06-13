@@ -19,5 +19,7 @@ class ClassificationHead(nn.Module):
         
     def forward(self, x):
         x = x[...,-1,:] # last token of the context window
-        return self.classifier(x)
+        x = self.classifier(x)
+        x = torch.squeeze(x)
+        return x
 

@@ -124,21 +124,3 @@ def one_hot_encoding(
         sample["data"] = one_hot.view(one_hot.size(0), -1)
 
     return sample
-
-
-# Deprecated
-def categorical_value_encoding(
-    sample: Dict[str, Any], categorical_bound: int = 32
-) -> Dict[str, Any]:
-    features, stats = sample["data"], sample["stats"]
-    categorical_levels = stats["categorical_levels"][:, : (categorical_bound - 1)].t()
-
-    value_encoding = torch.zeros_like(features)
-    for col_idx, col in enumerate(features.t()):
-        for row_idx, val in enumerate(col):
-            mask = (categorical_levels[:, col_idx] == val).nonzero()
-            if mask.numel() > 0:
-                value_encoding[row_idx, col_idx] = mask.item() + 1
-
-    sample["data"] = value_encoding
-    return sample

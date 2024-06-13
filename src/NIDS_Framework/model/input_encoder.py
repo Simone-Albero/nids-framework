@@ -11,10 +11,8 @@ class InputEncoder(nn.Module):
     def __init__(self, input_dim) -> None:
         super(InputEncoder, self).__init__()
 
-        self.linear_relu_stack = nn.Sequential(
-            nn.Linear(input_dim, input_dim),
-        )
+        self.linear = nn.Linear(input_dim, input_dim)
 
     def forward(self, x) -> torch.Tensor:
-        x = self.linear_relu_stack(x)
+        x = self.linear(x)
         return x
