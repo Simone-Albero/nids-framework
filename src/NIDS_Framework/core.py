@@ -120,16 +120,15 @@ def data_loader_test():
 
     train_dataset.categorical_transformation = trans_builder.build()
 
-    train_sampler = samplers.RandomSlidingWindowSampler(
-        train_dataset, window_size=8
+    train_sampler = samplers.FairSlidingWindowSampler(
+        train_dataset, y_train, window_size=8
     )
     train_dataloader = DataLoader(
-        train_dataset, batch_size=64, sampler=train_sampler, drop_last=True
+        train_dataset, batch_size=64, sampler=train_sampler, drop_last=True, shuffle=False
     )
 
-    inputs, labels = next(iter(train_dataloader))
+    inputs, _ = next(iter(train_dataloader))
     input_shape = inputs.shape
-    print(input_shape)
 
     device = ('cuda' if torch.cuda.is_available() else 'cpu')
     model = nn_classifier.NNClassifier(input_shape[-1]).to(device=device)
@@ -138,7 +137,7 @@ def data_loader_test():
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
     train = trainer.Trainer(model, criterion, optimizer, train_dataloader)
-    train.fit(1)
+    train.fit(3, 128)
 
 def main():
     debug_level = logging.INFO
