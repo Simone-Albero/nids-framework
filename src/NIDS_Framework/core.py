@@ -136,8 +136,8 @@ def data_loader_test():
     criterion = nn.BCELoss() 
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
-    train = trainer.Trainer(model, criterion, optimizer, train_dataloader)
-    train.fit(3, 128)
+    train = trainer.Trainer(model, criterion, optimizer)
+    train.fit(3, train_dataloader, 128)
 
 def main():
     debug_level = logging.INFO
