@@ -32,7 +32,7 @@ class Trainer:
             epoch_loss = 0.0
             
             if epoch_steps is None:
-                for batch in range(data_loader):
+                for batch in tqdm(data_loader):
                     epoch_loss += self.one_batch(batch)
                 epoch_loss /= len(data_loader)
             else:
@@ -44,10 +44,11 @@ class Trainer:
                 epoch_loss /= epoch_steps
             
             train_loss += epoch_loss
-            logging.info(f"Epoch: {epoch} Loss: {epoch_loss/epoch_steps}")
+            logging.info(f"Epoch: {epoch} Loss: {epoch_loss:.6f}.\n")
         
         train_loss /= n_epoch
-        logging.info(f"Done with training.\nTrained for {n_epoch} epochs with loss: {train_loss}.")
+        logging.info("Done with training.")
+        logging.info(f"Trained for {n_epoch} epochs with loss: {train_loss:.6f}.\n")
 
 
     def fit_one_batch(self, batch: Tuple) -> None:
@@ -64,8 +65,29 @@ class Trainer:
 
         return loss.item()
 
-    def validate(self):
-        pass
+    def test(self, data_loader: DataLoader):
+        logging.info(f"Starting test loop...")
+        num_correct = 0.0
+        self._model.eval()
+
+        for batch in tqdm(data_loader):
+            num_correct += self.test_one_batch(batch)
+
+        accuracy = num_correct / (len(data_loader) * data_loader.batch_size)
+
+        logging.info("Done with testing.")
+        logging.info(f"Test accuracy: {accuracy:.6f}.\n")
+
+    def test_one_batch(self, batch: Tuple):
+        inputs, labels = batch
+        inputs = inputs.to(self._device) 
+        labels = labels.to(self._device)
+
+        outputs = self._model(inputs)
+        predicted = torch.where(outputs >= 0.5, torch.tensor(1.0), torch.tensor(0.0))
+        num_correct = (predicted == labels).float().sum()
+        
+        return num_correct
 
     def save_model(self) -> None:
         pass

@@ -43,6 +43,7 @@ class FairSlidingWindowSampler(Sampler):
     def __init__(self, dataset: Dataset, labels: pd.Series, window_size: int) -> None:
         if window_size % 2 != 0: raise ValueError("Window size must be an even number.")
 
+        random.seed(42)
         self.dataset: Dataset = dataset
         self.window_size: int = window_size
 

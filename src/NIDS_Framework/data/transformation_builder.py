@@ -33,7 +33,7 @@ class TransformationBuilder:
             key=lambda transform_function: transform_function.order,
         )
         logging.info(
-            f"Generated transformations pipeline with {len(self._transformations)} transformations."
+            f"Generated transformations pipeline with {len(self._transformations)} transformations.\n"
         )
 
         self._transformations = []

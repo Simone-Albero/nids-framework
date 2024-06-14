@@ -80,10 +80,11 @@ def data_loader_test():
     proc = processor.Processor(df, prop)
 
     trans_builder = transformation_builder.TransformationBuilder()
+    categorical_levels = 32
 
     @trans_builder.add_step(order=1)
     #@trace_stats()
-    def categorical_conversion(dataset, properties, categorical_levels=32):
+    def categorical_conversion(dataset, properties, categorical_levels=categorical_levels):
         utilities.categorical_pre_processing(dataset, properties, categorical_levels)
 
     @trans_builder.add_step(order=2)
@@ -115,29 +116,42 @@ def data_loader_test():
     train_dataset.numeric_transformation = trans_builder.build()
 
     @trans_builder.add_step(order=1)
-    def categorical_one_hot(sample, categorical_levels=32):
+    def categorical_one_hot(sample, categorical_levels=categorical_levels):
         return utilities.one_hot_encoding(sample, categorical_levels)
 
     train_dataset.categorical_transformation = trans_builder.build()
 
+    @trans_builder.add_step(order=1)
+    def categorical_one_hot(sample, categorical_levels=categorical_levels):
+        return utilities.one_hot_encoding(sample, categorical_levels)
+
+    test_dataset.categorical_transformation = trans_builder.build()
+
+    window_size = 8
     train_sampler = samplers.FairSlidingWindowSampler(
-        train_dataset, y_train, window_size=8
+        train_dataset, y_train, window_size=window_size
     )
+    test_sampler = samplers.RandomSlidingWindowSampler(test_dataset, window_size=window_size)
+
     train_dataloader = DataLoader(
         train_dataset, batch_size=64, sampler=train_sampler, drop_last=True, shuffle=False
+    )
+    test_dataloader = DataLoader(
+        test_dataset, batch_size=64, sampler=test_sampler, drop_last=True, shuffle=False
     )
 
     inputs, _ = next(iter(train_dataloader))
     input_shape = inputs.shape
 
     device = ('cuda' if torch.cuda.is_available() else 'cpu')
-    model = nn_classifier.NNClassifier(input_shape[-1]).to(device=device)
+    model = nn_classifier.NNClassifier(input_shape[-1], num_layers=2, dropout=0.3).to(device=device)
 
     criterion = nn.BCELoss() 
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
     train = trainer.Trainer(model, criterion, optimizer)
-    train.fit(3, train_dataloader, 128)
+    train.fit(7, train_dataloader, 128)
+    train.test(test_dataloader)
 
 def main():
     debug_level = logging.INFO

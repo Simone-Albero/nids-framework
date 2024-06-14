@@ -31,7 +31,7 @@ class DatasetProperties:
         self.benign_label: Optional[str] = benign_label
 
         logging.info(
-            f"Dataset properties: Total features: {len(features)} (Numeric: {len(self.numeric_features)}, Categorical: {len(categorical_features)})"
+            f"Dataset properties: Total features: {len(features)} (Numeric: {len(self.numeric_features)}, Categorical: {len(categorical_features)})\n"
         )
 
 
@@ -68,7 +68,7 @@ class Processor:
             maping = transform_function(self._df, self._properties)
             if maping is not None: self._transformations_mappings[transform_function.__name__] = maping
 
-        logging.info("Completed.")
+        logging.info("Completed.\n")
         return self._df[self._properties.features], self._df[self._properties.labels]
     
     def decode(self, data: int, map_name: str):
