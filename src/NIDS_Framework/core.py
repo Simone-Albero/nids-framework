@@ -16,7 +16,10 @@ from data import (
 )
 from utilities import trace_stats
 from model import nn_classifier
-from training import trainer
+from training import (
+    trainer,
+    metrics,
+) 
 
 
 def data_loader_test():
@@ -98,8 +101,15 @@ def data_loader_test():
         X, y, test_size=0.2, random_state=42
     )
 
+    X_train, X_vaild, y_train, y_valid = train_test_split(
+        X_train, y_train, test_size=0.1, random_state=42
+    )
+
     train_dataset = tabular_datasets.TabularDataset(
         X_train[prop.numeric_features], X_train[prop.categorical_features], y_train
+    )
+    valid_dataset = tabular_datasets.TabularDataset(
+        X_vaild[prop.numeric_features], X_vaild[prop.categorical_features], y_valid
     )
     test_dataset = tabular_datasets.TabularDataset(
         X_test[prop.numeric_features], X_test[prop.categorical_features], y_test
@@ -125,16 +135,26 @@ def data_loader_test():
     def categorical_one_hot(sample, categorical_levels=categorical_levels):
         return utilities.one_hot_encoding(sample, categorical_levels)
 
+    valid_dataset.categorical_transformation = trans_builder.build()
+
+    @trans_builder.add_step(order=1)
+    def categorical_one_hot(sample, categorical_levels=categorical_levels):
+        return utilities.one_hot_encoding(sample, categorical_levels)
+
     test_dataset.categorical_transformation = trans_builder.build()
 
     window_size = 8
     train_sampler = samplers.FairSlidingWindowSampler(
         train_dataset, y_train, window_size=window_size
     )
+    valid_sampler = samplers.RandomSlidingWindowSampler(valid_dataset, window_size=window_size)
     test_sampler = samplers.RandomSlidingWindowSampler(test_dataset, window_size=window_size)
 
     train_dataloader = DataLoader(
         train_dataset, batch_size=64, sampler=train_sampler, drop_last=True, shuffle=False
+    )
+    valid_dataloader = DataLoader(
+        valid_dataset, batch_size=64, sampler=valid_sampler, drop_last=True, shuffle=False
     )
     test_dataloader = DataLoader(
         test_dataset, batch_size=64, sampler=test_sampler, drop_last=True, shuffle=False
@@ -150,8 +170,12 @@ def data_loader_test():
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
     train = trainer.Trainer(model, criterion, optimizer)
-    train.fit(7, train_dataloader, 128)
-    train.test(test_dataloader)
+    #train.train(6, train_dataloader, 128, 3, valid_dataloader)
+    train.train(6, train_dataloader, 128)
+
+    pred_func = lambda x: torch.where(x >= 0.5, torch.tensor(1.0), torch.tensor(0.0))
+    metric = metrics.BinaryClassificationMetric()
+    train.test(test_dataloader, pred_func, metric)
 
 def main():
     debug_level = logging.INFO
