@@ -5,6 +5,7 @@ import numpy as np
 from numpy.typing import NDArray
 from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score
 
+
 class Metric(ABC):
 
     __slots__ = [
@@ -33,7 +34,7 @@ class Metric(ABC):
         self._TN: float = None
         self._FP: float = None
         self._FN: float = None
-        
+
     def step(self, preds: List[NDArray], labels: List[NDArray]) -> None:
         self._preds.extend(preds)
         self._labels.extend(labels)
@@ -55,6 +56,7 @@ class Metric(ABC):
             f"False Negatives (FN): {self._FN}"
         )
 
+
 class BinaryClassificationMetric(Metric):
 
     def __init__(self) -> None:
@@ -62,7 +64,9 @@ class BinaryClassificationMetric(Metric):
 
     def apply(self) -> None:
         self._accuracy = np.mean(recall_score(self._labels, self._preds, average=None))
-        self._precision = precision_score(self._labels, self._preds, average='binary')
-        self._recall = recall_score(self._labels, self._preds, average='binary')
-        self._F1 = f1_score(self._labels, self._preds, average='binary')
-        self._TN, self._FP, self._FN, self._TP = confusion_matrix(self._labels, self._preds).ravel()
+        self._precision = precision_score(self._labels, self._preds, average="binary")
+        self._recall = recall_score(self._labels, self._preds, average="binary")
+        self._F1 = f1_score(self._labels, self._preds, average="binary")
+        self._TN, self._FP, self._FN, self._TP = confusion_matrix(
+            self._labels, self._preds
+        ).ravel()
