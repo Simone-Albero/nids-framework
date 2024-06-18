@@ -55,7 +55,7 @@ class FairSlidingWindowSampler(Sampler):
         self._legit_indices: List[int] = labels[legit_mask].index.tolist()
         self.labels = labels
 
-        self.num_samples: int = min(len(self._malicious_indices), len(self._legit_indices))
+        self.num_samples: int = 2 * min(len(self._malicious_indices), len(self._legit_indices))
 
     def __iter__(self) -> Iterator:
         random.shuffle(self._malicious_indices)
@@ -70,18 +70,3 @@ class FairSlidingWindowSampler(Sampler):
 
     def __len__(self) -> int:
         return self.num_samples
-    
-
-# class BatchSampler(BatchSampler):
-#     def __init__(self, sampler, batch_size, drop_last):
-#         super().__init__(sampler, batch_size, drop_last)
-        
-#     def __iter__(self):
-#         batch = []
-#         for idx in self.sampler:
-#             batch.append(idx)
-#             if len(batch) == self.batch_size:
-#                 yield batch
-#                 batch = []
-#         if len(batch) > 0 and not self.drop_last:
-#             yield batch

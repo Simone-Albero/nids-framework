@@ -8,13 +8,11 @@ class ClassificationHead(nn.Module):
         "classifier",
     ]
 
-    def __init__(self, input_dim, hidden_dim=256):
+    def __init__(self, input_dim):
         super(ClassificationHead, self).__init__()
 
         self.classifier = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
-            #nn.ReLU(),
-            nn.Linear(hidden_dim, 1),
+            nn.Linear(input_dim, 1),
             nn.Sigmoid()
         )
         

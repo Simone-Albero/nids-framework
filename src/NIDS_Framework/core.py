@@ -7,6 +7,7 @@ import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader
 
+from utilities import trace_stats
 from data import (
     processor,
     utilities,
@@ -14,13 +15,16 @@ from data import (
     samplers,
     tabular_datasets,
 )
-from utilities import trace_stats
-from model import nn_classifier
+from model import (
+    nn_classifier,
+    input_encoder,
+    transformer,
+    classification_head,
+)
 from training import (
     trainer,
     metrics,
 )
-
 
 def data_loader_test():
     prop = processor.DatasetProperties(
@@ -84,14 +88,22 @@ def data_loader_test():
 
     trans_builder = transformation_builder.TransformationBuilder()
     CATEGORICAL_LEV = 32
-    BOUND = 1000000
+    BOUND = 1_000_000_000
 
-    @trans_builder.add_step(order=1)
+    # @trans_builder.add_step(order=1)
+    # def base_pre_processing(dataset, properties):
+    #     utilities.base_pre_processing(dataset, properties, BOUND)
+    
+    # @trans_builder.add_step(order=2)
+    # def log_pre_processing(dataset, properties):
+    #     utilities.log_pre_processing(dataset, properties)
+
+    @trans_builder.add_step(order=3)
     # @trace_stats()
     def categorical_conversion(dataset, properties, categorical_levels=CATEGORICAL_LEV):
         utilities.categorical_pre_processing(dataset, properties, categorical_levels)
 
-    @trans_builder.add_step(order=2)
+    @trans_builder.add_step(order=4)
     def bynary_label_conversion(dataset, properties):
         utilities.bynary_label_conversion(dataset, properties)
 
@@ -144,13 +156,16 @@ def data_loader_test():
 
     test_dataset.categorical_transformation = trans_builder.build()
 
+    BATCH_SIZE = 128
     WINDOW_SIZE = 8
-    NUM_HEADS = 4
-    NUM_LAYERS = 4
-    DROPUT = 0.4
+    EMBED_DIM = 64
+    NUM_HEADS = 2
+    NUM_LAYERS = 3
+    DROPUT = 0.1
+    DIM_FF = 128
     LR = 0.001
     MOMENTUM = 0.9
-    WHIGHT_DECAY = 0.1
+    WHIGHT_DECAY = 0.01
 
     train_sampler = samplers.FairSlidingWindowSampler(
         train_dataset, y_train, window_size=WINDOW_SIZE
@@ -161,58 +176,64 @@ def data_loader_test():
     test_sampler = samplers.RandomSlidingWindowSampler(
         test_dataset, window_size=WINDOW_SIZE
     )
-
+    
     train_dataloader = DataLoader(
         train_dataset,
-        batch_size=64,
+        batch_size=BATCH_SIZE,
         sampler=train_sampler,
         drop_last=True,
         shuffle=False,
     )
     valid_dataloader = DataLoader(
         valid_dataset,
-        batch_size=64,
+        batch_size=BATCH_SIZE,
         sampler=valid_sampler,
         drop_last=True,
         shuffle=False,
     )
     test_dataloader = DataLoader(
-        test_dataset, batch_size=64, sampler=test_sampler, drop_last=True, shuffle=False
+        test_dataset, batch_size=512, sampler=test_sampler, drop_last=True, shuffle=False
     )
 
     inputs, _ = next(iter(train_dataloader))
-    input_shape = inputs.shape
-
+    input_shape = inputs.shape[-1]
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = nn_classifier.NNClassifier(
-        input_shape[-1], num_heads=NUM_HEADS, num_layers=NUM_LAYERS, dropout=DROPUT
-    ).to(device=device)
+
+    input_encoding = input_encoder.InputEncoder(input_shape, EMBED_DIM)
+    transformer_block = transformer.TransformerEncoderOnly(EMBED_DIM, NUM_HEADS, NUM_LAYERS, DIM_FF, DROPUT)
+    class_head = classification_head.ClassificationHead(EMBED_DIM)
+    model = nn_classifier.NNClassifier(input_encoding, transformer_block, class_head).to(device=device)
+
+    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f'Total number of parameters: {total_params}')
 
     criterion = nn.BCELoss()
-    optimizer = optim.SGD(
-        model.parameters(), lr=LR, momentum=MOMENTUM, weight_decay=WHIGHT_DECAY
+    optimizer = optim.Adam(
+        model.parameters(), lr=LR, weight_decay=WHIGHT_DECAY,
     )
 
-    N_EPOCH = 100
-    EPOCH_STEPS = 128
-    EPOCH_UNTI_VALIDATION = 5
+    N_EPOCH = 3
+    EPOCH_STEPS = 64
+    EPOCH_UNTIL_VALIDATION = 3
     PATIENCE = 3
-    DELTA = 0.05
+    DELTA = 0.01
 
     train = trainer.Trainer(model, criterion, optimizer)
+    #train.load_model()
+
     train.train(
         n_epoch=N_EPOCH,
         train_data_loader=train_dataloader,
         epoch_steps=EPOCH_STEPS,
-        epochs_until_validation=EPOCH_UNTI_VALIDATION,
+        epochs_until_validation=EPOCH_UNTIL_VALIDATION,
         valid_data_loader=valid_dataloader,
         patience=PATIENCE,
         delta=DELTA,
     )
 
-    pred_func = lambda x: torch.where(x >= 0.5, torch.tensor(1.0), torch.tensor(0.0))
     metric = metrics.BinaryClassificationMetric()
-    train.test(test_dataloader, pred_func, metric)
+
+    train.test(test_dataloader, metric)
     train.save_model()
 
 

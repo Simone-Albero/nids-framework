@@ -2,11 +2,6 @@ from typing import List
 
 import torch.nn as nn
 
-from model.input_encoder import InputEncoder
-from model.transformer import TransformerEncoderOnlyModel
-from model.classification_head import ClassificationHead
-
-
 
 class NNClassifier(nn.Module):
     
@@ -16,12 +11,12 @@ class NNClassifier(nn.Module):
         "classification_head",
     ]
 
-    def __init__(self, input_dim, num_heads=4, num_layers=2, dim_feedforward=128, dropout=0.1):
+    def __init__(self, input_encoding: nn.Module, transformer_block: nn.Module, classification_head: nn.Module):
         super(NNClassifier, self).__init__()
 
-        self.input_encoding = InputEncoder(input_dim)
-        self.transformer_block = TransformerEncoderOnlyModel(input_dim, num_heads, num_layers, dim_feedforward, dropout)
-        self.classification_head = ClassificationHead(input_dim, 80)
+        self.input_encoding = input_encoding
+        self.transformer_block = transformer_block
+        self.classification_head = classification_head
         
         
     def forward(self, x):

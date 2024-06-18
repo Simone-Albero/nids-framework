@@ -1,19 +1,13 @@
 from typing import List
 from abc import ABC, abstractmethod
 
-import numpy as np
-from numpy.typing import NDArray
-from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score
-
+import torch
 
 class Metric(ABC):
 
     __slots__ = [
-        "_preds",
-        "_labels",
         "_precision",
         "_recall",
-        "_accuracy",
         "_F1",
         "_TP",
         "_TN",
@@ -22,22 +16,17 @@ class Metric(ABC):
     ]
 
     def __init__(self) -> None:
-        super().__init__()
-        self._preds: List[NDArray] = []
-        self._labels: List[NDArray] = []
-
         self._precision: float = None
         self._recall: float = None
-        self._accuracy: float = None
         self._F1: float = None
         self._TP: float = None
         self._TN: float = None
         self._FP: float = None
         self._FN: float = None
 
-    def step(self, preds: List[NDArray], labels: List[NDArray]) -> None:
-        self._preds.extend(preds)
-        self._labels.extend(labels)
+    @abstractmethod
+    def step(self, preds: torch.Tensor, labels: torch.Tensor) -> None:
+        pass
 
     @abstractmethod
     def apply(self) -> None:
@@ -46,10 +35,9 @@ class Metric(ABC):
     def __str__(self) -> str:
         return (
             f"Statistics:\n"
-            f"Precision: {self._precision}\n"
-            f"Recall: {self._recall}\n"
-            f"Accuracy: {self._accuracy}\n"
-            f"F1 Score: {self._F1}\n"
+            f"Precision: {self._precision:.4f}\n"
+            f"Recall: {self._recall:.4f}\n"
+            f"F1 Score: {self._F1:.4f}\n"
             f"True Positives (TP): {self._TP}\n"
             f"True Negatives (TN): {self._TN}\n"
             f"False Positives (FP): {self._FP}\n"
@@ -59,14 +47,36 @@ class Metric(ABC):
 
 class BinaryClassificationMetric(Metric):
 
-    def __init__(self) -> None:
+    __slots__ = [
+        "_preds",
+        "_labels",
+        "_threshold",
+    ]
+
+    def __init__(self, threshold=0.5) -> None:
         super().__init__()
 
+        self._preds: torch.Tensor = torch.empty(0).bool()
+        self._labels: torch.Tensor = torch.empty(0).bool()
+        self._threshold: float = threshold
+
+
+    def step(self, output: torch.Tensor, labels: torch.Tensor) -> None:
+        preds = output >= self._threshold
+        labels = labels.bool()
+
+        self._preds = torch.cat((self._preds, preds), dim=0)
+        self._labels = torch.cat((self._labels, labels), dim=0)
+
     def apply(self) -> None:
-        self._accuracy = np.mean(recall_score(self._labels, self._preds, average=None))
-        self._precision = precision_score(self._labels, self._preds, average="binary")
-        self._recall = recall_score(self._labels, self._preds, average="binary")
-        self._F1 = f1_score(self._labels, self._preds, average="binary")
-        self._TN, self._FP, self._FN, self._TP = confusion_matrix(
-            self._labels, self._preds
-        ).ravel()
+        print(torch.count_nonzero(self._preds).item(), torch.count_nonzero(self._labels).item())
+        self._TP = torch.count_nonzero(self._preds & self._labels).item()
+        self._FP = torch.count_nonzero(self._preds & ~self._labels).item()
+        self._TN = torch.count_nonzero(~self._preds & ~self._labels).item()
+        self._FN = torch.count_nonzero(~self._preds & self._labels).item()
+
+        self._precision = self._TP / (self._TP + self._FP) if (self._TP + self._FP) > 0 else 0
+        self._recall = self._TP / (self._TP + self._FN) if (self._TP + self._FN) > 0 else 0
+        self._F1 = 2 * (self._precision * self._recall) / (self._precision + self._recall) if (self._precision + self._recall) > 0 else 0
+
+

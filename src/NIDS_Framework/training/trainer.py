@@ -179,6 +179,9 @@ class Trainer:
         self._optimizer.zero_grad()
         outputs = self._model(inputs)
         loss = self._criterion(outputs, labels)
+
+        #l1_norm = sum(param.abs().sum() for param in self._model.parameters())
+        #loss += 0.01 * l1_norm
         loss.backward()
         self._optimizer.step()
 
@@ -212,17 +215,18 @@ class Trainer:
         return loss.item()
 
     def test(
-        self, data_loader: DataLoader, prediction_fun: Callable, metric: metrics.Metric
+        self, data_loader: DataLoader, metric: metrics.Metric
     ) -> None:
-        if prediction_fun is None or metric is None:
-            raise ValueError("Please provide both metic and prediction function.")
+        if metric is None:
+            raise ValueError("Please provide metic before testing.")
         logging.info(f"Starting test loop...")
         self._hook_system.execute_hooks(self.BEFORE_TEST)
         self._model.eval()
 
-        for batch in tqdm(data_loader, desc="Testing"):
-            predicted, labels = self._test_one_batch(batch, prediction_fun)
-            metric.step(predicted.numpy(), labels.numpy())
+        with torch.no_grad():
+            for batch in tqdm(data_loader, desc="Testing"):
+                outputs, labels = self._test_one_batch(batch)
+                metric.step(outputs, labels)
 
         metric.apply()
         logging.info("Done with testing.")
@@ -230,15 +234,14 @@ class Trainer:
         self._hook_system.execute_hooks(self.AFTER_TEST)
 
     def _test_one_batch(
-        self, batch: Tuple, prediction_fun: Callable
+        self, batch: Tuple,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         inputs, labels = batch
         inputs = inputs.to(self._device)
         labels = labels.to(self._device)
 
         outputs = self._model(inputs)
-        predicted = prediction_fun(outputs)
-        return predicted, labels
+        return outputs, labels
 
     def save_model(self, path: Optional[str] = "saves/model.pt") -> None:
         logging.info("Saving model weights...")

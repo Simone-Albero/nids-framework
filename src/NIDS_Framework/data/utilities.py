@@ -21,7 +21,7 @@ def base_pre_processing(
 
 
 def log_pre_processing(
-    dataset: pd.DataFrame, properties: DatasetProperties, bound: int = 1000000
+    dataset: pd.DataFrame, properties: DatasetProperties
 ) -> None:
     logging.debug("Normalizing numeric features with Log...")
     for col in properties.numeric_features:
@@ -47,7 +47,7 @@ def categorical_pre_processing(
     )
 
     for col in properties.categorical_features:
-        unique_values = dataset[col].unique()[: (categorical_levels - 1)]
+        unique_values = dataset[col].value_counts().index[: (categorical_levels - 1)]
         value_map = {val: idx for idx, val in enumerate(unique_values)}
 
         dataset[col] = dataset[col].apply(lambda x: value_map.get(x, -1) + 1)
@@ -72,9 +72,7 @@ def bynary_label_conversion(
     dataset: pd.DataFrame, properties: DatasetProperties
 ) -> None:
     logging.debug("Mapping class labels to numeric values...")
-    dataset[properties.labels] = np.where(
-        dataset[properties.labels] != properties.benign_label, 1, 0
-    )
+    dataset[properties.labels] = ~(dataset[properties.labels].astype('str') == str(properties.benign_label))
 
 
 def bound_transformation(
