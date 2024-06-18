@@ -1,4 +1,4 @@
-from typing import Dict, Any, Tuple
+from typing import Dict, Any
 import logging
 
 import pandas as pd
@@ -9,11 +9,14 @@ from data.processor import DatasetProperties
 
 
 def base_pre_processing(
-    dataset: pd.DataFrame, properties: DatasetProperties, bound: int = 1000000
+    dataset: pd.DataFrame,
+    properties: DatasetProperties,
+    train_mask: pd.Series,
+    bound: int,
 ) -> None:
     logging.debug(f"Bounding numeric features to {bound}...")
     for col in properties.numeric_features:
-        column_values = dataset[col]
+        column_values = dataset[col].values
         column_values[~np.isfinite(column_values)] = 0
         column_values[column_values < -bound] = 0
         column_values[column_values > bound] = 0
@@ -21,13 +24,16 @@ def base_pre_processing(
 
 
 def log_pre_processing(
-    dataset: pd.DataFrame, properties: DatasetProperties
+    dataset: pd.DataFrame,
+    properties: DatasetProperties,
+    train_mask: pd.Series,
 ) -> None:
     logging.debug("Normalizing numeric features with Log...")
     for col in properties.numeric_features:
-        column_values = dataset[col]
-        min_value = np.min(column_values)
-        max_value = np.max(column_values)
+        column_values = dataset[col].values
+        train_values = dataset[train_mask][col].values
+        min_value = np.min(train_values)
+        max_value = np.max(train_values)
         gap = max_value - min_value
 
         if gap == 0:
@@ -40,21 +46,28 @@ def log_pre_processing(
 
 
 def categorical_pre_processing(
-    dataset: pd.DataFrame, properties: DatasetProperties, categorical_levels: int = 32
+    dataset: pd.DataFrame,
+    properties: DatasetProperties,
+    train_mask: pd.Series,
+    categorical_levels: int = 32,
 ) -> None:
     logging.debug(
         f"Mapping {len(properties.categorical_features)} categorical features to {categorical_levels} numeric tags..."
     )
 
     for col in properties.categorical_features:
-        unique_values = dataset[col].value_counts().index[: (categorical_levels - 1)]
+        unique_values = (
+            dataset[train_mask][col].value_counts().index[: (categorical_levels - 1)]
+        )
         value_map = {val: idx for idx, val in enumerate(unique_values)}
 
         dataset[col] = dataset[col].apply(lambda x: value_map.get(x, -1) + 1)
 
 
 def multi_class_label_conversion(
-    dataset: pd.DataFrame, properties: DatasetProperties
+    dataset: pd.DataFrame,
+    properties: DatasetProperties,
+    train_mask: pd.Series,
 ) -> None:
     logging.debug("Mapping class labels to numeric values...")
     mapping = {}
@@ -69,43 +82,14 @@ def multi_class_label_conversion(
 
 
 def bynary_label_conversion(
-    dataset: pd.DataFrame, properties: DatasetProperties
+    dataset: pd.DataFrame,
+    properties: DatasetProperties,
+    train_mask: pd.Series,
 ) -> None:
     logging.debug("Mapping class labels to numeric values...")
-    dataset[properties.labels] = ~(dataset[properties.labels].astype('str') == str(properties.benign_label))
-
-
-def bound_transformation(
-    sample: Dict[str, Any], bound: int = 1000000
-) -> Dict[str, Any]:
-    features, stats = sample["data"], sample["stats"]
-    features = torch.clamp(features, min=-bound, max=bound)
-    stats["min"] = torch.clamp(stats["min"], min=-bound)
-    stats["max"] = torch.clamp(stats["max"], max=bound)
-
-    logging.debug(f"Bound transformation result:\n{features}")
-
-    sample["data"] = features
-    return sample
-
-
-def log_transformation(sample: Dict[str, Any]) -> Dict[str, Any]:
-    features, stats = sample["data"], sample["stats"]
-
-    min_values = stats["min"]
-    max_values = stats["max"]
-    gaps = max_values - min_values
-
-    mask = gaps != 0
-    features = torch.where(
-        mask, torch.log(features + 1) / torch.log(gaps + 1), torch.zeros_like(features)
+    dataset[properties.labels] = ~(
+        dataset[properties.labels].astype("str") == str(properties.benign_label)
     )
-    features = torch.where(mask, features, torch.zeros_like(features))
-
-    logging.debug(f"Log transformation result:\n{features}")
-
-    sample["data"] = features
-    return sample
 
 
 def one_hot_encoding(

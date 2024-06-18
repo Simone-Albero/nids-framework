@@ -2,7 +2,6 @@ import logging
 from rich.logging import RichHandler
 
 import pandas as pd
-from sklearn.model_selection import train_test_split
 import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader
@@ -25,6 +24,7 @@ from training import (
     trainer,
     metrics,
 )
+
 
 def data_loader_test():
     prop = processor.DatasetProperties(
@@ -90,33 +90,33 @@ def data_loader_test():
     CATEGORICAL_LEV = 32
     BOUND = 1_000_000_000
 
-    # @trans_builder.add_step(order=1)
-    # def base_pre_processing(dataset, properties):
-    #     utilities.base_pre_processing(dataset, properties, BOUND)
-    
-    # @trans_builder.add_step(order=2)
-    # def log_pre_processing(dataset, properties):
-    #     utilities.log_pre_processing(dataset, properties)
+    @trans_builder.add_step(order=1)
+    def base_pre_processing(dataset, properties, train_mask):
+        utilities.base_pre_processing(dataset, properties, train_mask, BOUND)
+
+    @trans_builder.add_step(order=2)
+    def log_pre_processing(dataset, properties, train_mask):
+        utilities.log_pre_processing(dataset, properties, train_mask)
 
     @trans_builder.add_step(order=3)
     # @trace_stats()
-    def categorical_conversion(dataset, properties, categorical_levels=CATEGORICAL_LEV):
-        utilities.categorical_pre_processing(dataset, properties, categorical_levels)
+    def categorical_conversion(
+        dataset, properties, train_mask, categorical_levels=CATEGORICAL_LEV
+    ):
+        utilities.categorical_pre_processing(
+            dataset, properties, train_mask, categorical_levels
+        )
 
     @trans_builder.add_step(order=4)
-    def bynary_label_conversion(dataset, properties):
-        utilities.bynary_label_conversion(dataset, properties)
+    def bynary_label_conversion(dataset, properties, train_mask):
+        utilities.bynary_label_conversion(dataset, properties, train_mask)
 
     proc.transformations = trans_builder.build()
-    X, y = proc.fit()
+    proc.apply()
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
-    )
-
-    X_train, X_vaild, y_train, y_valid = train_test_split(
-        X_train, y_train, test_size=0.1, random_state=42
-    )
+    X_train, y_train = proc.get_train()
+    X_vaild, y_valid = proc.get_valid()
+    X_test, y_test = proc.get_test()
 
     train_dataset = tabular_datasets.TabularDataset(
         X_train[prop.numeric_features], X_train[prop.categorical_features], y_train
@@ -127,16 +127,6 @@ def data_loader_test():
     test_dataset = tabular_datasets.TabularDataset(
         X_test[prop.numeric_features], X_test[prop.categorical_features], y_test
     )
-
-    @trans_builder.add_step(order=1)
-    def bound_trans(sample, bound=BOUND):
-        return utilities.bound_transformation(sample, bound)
-
-    @trans_builder.add_step(order=2)
-    def log_trans(sample):
-        return utilities.log_transformation(sample)
-
-    train_dataset.numeric_transformation = trans_builder.build()
 
     @trans_builder.add_step(order=1)
     def categorical_one_hot(sample, categorical_levels=CATEGORICAL_LEV):
@@ -164,7 +154,6 @@ def data_loader_test():
     DROPUT = 0.1
     DIM_FF = 128
     LR = 0.001
-    MOMENTUM = 0.9
     WHIGHT_DECAY = 0.01
 
     train_sampler = samplers.FairSlidingWindowSampler(
@@ -176,7 +165,7 @@ def data_loader_test():
     test_sampler = samplers.RandomSlidingWindowSampler(
         test_dataset, window_size=WINDOW_SIZE
     )
-    
+
     train_dataloader = DataLoader(
         train_dataset,
         batch_size=BATCH_SIZE,
@@ -192,7 +181,11 @@ def data_loader_test():
         shuffle=False,
     )
     test_dataloader = DataLoader(
-        test_dataset, batch_size=512, sampler=test_sampler, drop_last=True, shuffle=False
+        test_dataset,
+        batch_size=1024,
+        sampler=test_sampler,
+        drop_last=True,
+        shuffle=False,
     )
 
     inputs, _ = next(iter(train_dataloader))
@@ -200,16 +193,22 @@ def data_loader_test():
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     input_encoding = input_encoder.InputEncoder(input_shape, EMBED_DIM)
-    transformer_block = transformer.TransformerEncoderOnly(EMBED_DIM, NUM_HEADS, NUM_LAYERS, DIM_FF, DROPUT)
+    transformer_block = transformer.TransformerEncoderOnly(
+        EMBED_DIM, NUM_HEADS, NUM_LAYERS, DIM_FF, DROPUT
+    )
     class_head = classification_head.ClassificationHead(EMBED_DIM)
-    model = nn_classifier.NNClassifier(input_encoding, transformer_block, class_head).to(device=device)
+    model = nn_classifier.NNClassifier(
+        input_encoding, transformer_block, class_head
+    ).to(device=device)
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f'Total number of parameters: {total_params}')
+    print(f"Total number of parameters: {total_params}")
 
     criterion = nn.BCELoss()
     optimizer = optim.Adam(
-        model.parameters(), lr=LR, weight_decay=WHIGHT_DECAY,
+        model.parameters(),
+        lr=LR,
+        weight_decay=WHIGHT_DECAY,
     )
 
     N_EPOCH = 3
@@ -219,7 +218,7 @@ def data_loader_test():
     DELTA = 0.01
 
     train = trainer.Trainer(model, criterion, optimizer)
-    #train.load_model()
+    # train.load_model()
 
     train.train(
         n_epoch=N_EPOCH,
@@ -234,7 +233,7 @@ def data_loader_test():
     metric = metrics.BinaryClassificationMetric()
 
     train.test(test_dataloader, metric)
-    train.save_model()
+    # train.save_model()
 
 
 def main():
