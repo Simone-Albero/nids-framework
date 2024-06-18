@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 
 from tools import hook_system
 from training import metrics
-from utilities import trace_stats
+
 
 class EarlyStopping:
 
@@ -126,13 +126,12 @@ class Trainer:
             logging.info(f"Epoch: {epoch} Loss: {epoch_loss:.6f}.\n")
 
             if valid_data_loader and epochs_until_validation:
-                if (epoch + 1) % epochs_until_validation == 0 and (
-                    epoch + 1
-                ) != n_epoch:
+                if (epoch + 1) % epochs_until_validation == 0 or epoch + 1 == n_epoch:
                     validation_loss = self.validate(valid_data_loader)
                     early_stopping(validation_loss, self._model)
                     if early_stopping.early_stop:
-                        logging.info(f"Early stopping in epoch: {epoch+1}")
+                        if epoch + 1 == n_epoch: logging.info(f"Early stopping in epoch: {epoch+1}")
+                        else: logging.info("Loading best model weights configuration.")
                         self._model.load_state_dict(
                             torch.load("checkpoints/checkpoint.pt")
                         )
@@ -140,7 +139,7 @@ class Trainer:
                     else:
                         self._model.train()
 
-        train_loss /= (epoch +1)
+        train_loss /= epoch + 1
         logging.info("Done with training.")
         logging.info(f"Trained for {epoch + 1} epochs with loss: {train_loss:.6f}.\n")
         self._hook_system.execute_hooks(self.AFTER_TRAIN)
@@ -179,9 +178,6 @@ class Trainer:
         self._optimizer.zero_grad()
         outputs = self._model(inputs)
         loss = self._criterion(outputs, labels)
-
-        #l1_norm = sum(param.abs().sum() for param in self._model.parameters())
-        #loss += 0.01 * l1_norm
         loss.backward()
         self._optimizer.step()
 
@@ -214,9 +210,7 @@ class Trainer:
         loss = self._criterion(outputs, labels)
         return loss.item()
 
-    def test(
-        self, data_loader: DataLoader, metric: metrics.Metric
-    ) -> None:
+    def test(self, data_loader: DataLoader, metric: metrics.Metric) -> None:
         if metric is None:
             raise ValueError("Please provide metic before testing.")
         logging.info(f"Starting test loop...")
@@ -234,7 +228,8 @@ class Trainer:
         self._hook_system.execute_hooks(self.AFTER_TEST)
 
     def _test_one_batch(
-        self, batch: Tuple,
+        self,
+        batch: Tuple,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         inputs, labels = batch
         inputs = inputs.to(self._device)
