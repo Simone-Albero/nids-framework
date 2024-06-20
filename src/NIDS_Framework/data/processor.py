@@ -3,6 +3,7 @@ import logging
 
 import pandas as pd
 import numpy as np
+from numpy.typing import NDArray
 
 
 class DatasetProperties:
@@ -64,7 +65,9 @@ class Processor:
         self._valid_mask: pd.Series = pd.Series(valid_mask, index=df.index)
         self._test_mask: pd.Series = pd.Series(test_mask, index=df.index)
 
-    def _df_split(self, train_size: float, valid_size: float):
+    def _df_split(
+        self, train_size: float, valid_size: float
+    ) -> Tuple[NDArray, NDArray, NDArray]:
         total_samples = len(self._df)
         num_train = int(train_size * total_samples)
         num_valid = int(valid_size * total_samples)
@@ -102,9 +105,13 @@ class Processor:
     def apply(self) -> None:
         logging.info(f"Applying {len(self._transformations)} transformation...")
         for transform_function in self._transformations:
-            maping = transform_function(self._df, self._properties, self._train_mask)
-            if maping is not None:
-                self._transformations_mappings[transform_function.__name__] = maping
+            transform_map = transform_function(
+                self._df, self._properties, self._train_mask
+            )
+            if transform_map is not None:
+                self._transformations_mappings[transform_function.__name__] = (
+                    transform_map
+                )
 
         logging.info("Completed.\n")
 
@@ -126,7 +133,14 @@ class Processor:
             self._df[self._test_mask][self._properties.labels],
         )
 
-    def decode(self, data: int, map_name: str):
+    def decode(self, data: int, map_name: str) -> Any:
+        if map_name not in self._transformations_mappings:
+            raise ValueError(f"Map {map_name} not in maps.")
         if data not in self._transformations_mappings[map_name]:
             raise ValueError(f"Value {data} not in {map_name}.")
         return self._transformations_mappings[map_name][data]
+
+    def map_values(self, map_name: str) -> Any:
+        if map_name not in self._transformations_mappings:
+            raise ValueError(f"Map {map_name} not in maps.")
+        return self._transformations_mappings[map_name].values()

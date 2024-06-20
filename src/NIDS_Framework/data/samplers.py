@@ -1,4 +1,4 @@
-from typing import Iterator, List
+from typing import Iterator, List, Any
 import random
 
 import pandas as pd
@@ -40,7 +40,7 @@ class FairSlidingWindowSampler(Sampler):
         "labels",
     ]
 
-    def __init__(self, dataset: Dataset, labels: pd.Series, window_size: int) -> None:
+    def __init__(self, dataset: Dataset, labels: pd.Series, benign_label: Any, window_size: int) -> None:
         if window_size % 2 != 0: raise ValueError("Window size must be an even number.")
 
         random.seed(42)
@@ -48,13 +48,12 @@ class FairSlidingWindowSampler(Sampler):
         self.window_size: int = window_size
 
         labels.reset_index(drop=True, inplace=True)
-        malicious_mask = (labels == 1) & (labels.index > window_size - 1)
-        legit_mask = (labels == 0) & (labels.index > window_size - 1)
+        malicious_mask = (labels != benign_label) & (labels.index > window_size - 1)
+        legit_mask = (labels == benign_label) & (labels.index > window_size - 1)
 
         self._malicious_indices: List[int] = labels[malicious_mask].index.tolist()
         self._legit_indices: List[int] = labels[legit_mask].index.tolist()
-        self.labels = labels
-
+        self.labels: pd.Series = labels
         self.num_samples: int = 2 * min(len(self._malicious_indices), len(self._legit_indices))
 
     def __iter__(self) -> Iterator:

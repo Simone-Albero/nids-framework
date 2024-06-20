@@ -68,7 +68,7 @@ def multi_class_label_conversion(
     dataset: pd.DataFrame,
     properties: DatasetProperties,
     train_mask: pd.Series,
-) -> None:
+) -> Dict[int, Any]:
     logging.debug("Mapping class labels to numeric values...")
     mapping = {}
     reverse = {}
@@ -77,7 +77,9 @@ def multi_class_label_conversion(
         mapping[label] = idx
         reverse[idx] = label
 
-    dataset[properties.labels] = dataset[properties.labels].replace(mapping)
+    dataset[properties.labels] = dataset[properties.labels].apply(
+        lambda x: mapping.get(x)
+    )
     return reverse
 
 
@@ -92,12 +94,10 @@ def bynary_label_conversion(
     )
 
 
-def one_hot_encoding(
-    sample: Dict[str, Any], categorical_levels: int = 32
-) -> Dict[str, Any]:
+def one_hot_encoding(sample: Dict[str, Any], levels: int = 32) -> Dict[str, Any]:
     features = sample["data"]
 
-    one_hot = torch.nn.functional.one_hot(features, num_classes=categorical_levels)
+    one_hot = torch.nn.functional.one_hot(features, num_classes=levels)
     logging.debug(f"One-hot transformation result:\n{one_hot}")
 
     if len(one_hot.shape) == 2:

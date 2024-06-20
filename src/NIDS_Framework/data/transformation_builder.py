@@ -18,11 +18,14 @@ class TransformationBuilder:
             def wrapper(*args, **kwargs):
                 return func(*args, **kwargs)
 
+            wrapper.__name__ = func.__name__
             wrapper.order = order
             self._transformations.append(wrapper)
+
             logging.info(
                 f"Added '{func.__name__}' to transformations pipeline with order {order}."
             )
+
             return wrapper
 
         return decorator

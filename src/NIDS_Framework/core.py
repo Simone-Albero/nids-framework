@@ -6,7 +6,7 @@ import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader
 
-from utilities import trace_stats
+from tools.utilities import trace_stats
 from data import (
     processor,
     utilities,
@@ -132,32 +132,23 @@ def data_loader_test():
     def categorical_one_hot(sample, categorical_levels=CATEGORICAL_LEV):
         return utilities.one_hot_encoding(sample, categorical_levels)
 
-    train_dataset.categorical_transformation = trans_builder.build()
-
-    @trans_builder.add_step(order=1)
-    def categorical_one_hot(sample, categorical_levels=CATEGORICAL_LEV):
-        return utilities.one_hot_encoding(sample, categorical_levels)
-
-    valid_dataset.categorical_transformation = trans_builder.build()
-
-    @trans_builder.add_step(order=1)
-    def categorical_one_hot(sample, categorical_levels=CATEGORICAL_LEV):
-        return utilities.one_hot_encoding(sample, categorical_levels)
-
-    test_dataset.categorical_transformation = trans_builder.build()
+    transformations = trans_builder.build()
+    train_dataset.categorical_transformation = transformations
+    valid_dataset.categorical_transformation = transformations
+    test_dataset.categorical_transformation = transformations
 
     BATCH_SIZE = 128
-    WINDOW_SIZE = 8
-    EMBED_DIM = 64
-    NUM_HEADS = 2
-    NUM_LAYERS = 3
+    WINDOW_SIZE = 256
+    EMBED_DIM = 128
+    NUM_HEADS = 4
+    NUM_LAYERS = 10
     DROPUT = 0.1
-    DIM_FF = 128
+    DIM_FF = 256
     LR = 0.001
     WHIGHT_DECAY = 0.01
 
     train_sampler = samplers.FairSlidingWindowSampler(
-        train_dataset, y_train, window_size=WINDOW_SIZE
+        train_dataset, y_train, 0, window_size=WINDOW_SIZE
     )
     valid_sampler = samplers.RandomSlidingWindowSampler(
         valid_dataset, window_size=WINDOW_SIZE
@@ -175,14 +166,14 @@ def data_loader_test():
     )
     valid_dataloader = DataLoader(
         valid_dataset,
-        batch_size=BATCH_SIZE,
+        batch_size=256,
         sampler=valid_sampler,
         drop_last=True,
         shuffle=False,
     )
     test_dataloader = DataLoader(
         test_dataset,
-        batch_size=1024,
+        batch_size=256,
         sampler=test_sampler,
         drop_last=True,
         shuffle=False,
@@ -211,10 +202,10 @@ def data_loader_test():
         weight_decay=WHIGHT_DECAY,
     )
 
-    N_EPOCH = 3
+    N_EPOCH = 4
     EPOCH_STEPS = 64
-    EPOCH_UNTIL_VALIDATION = 3
-    PATIENCE = 3
+    EPOCH_UNTIL_VALIDATION = 4
+    PATIENCE = 2
     DELTA = 0.01
 
     train = trainer.Trainer(model, criterion, optimizer)
@@ -233,7 +224,7 @@ def data_loader_test():
     metric = metrics.BinaryClassificationMetric()
 
     train.test(test_dataloader, metric)
-    # train.save_model()
+    train.save_model()
 
 
 def main():
