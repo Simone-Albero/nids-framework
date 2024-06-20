@@ -10,8 +10,8 @@ class InputEncoder(nn.Module):
 
     def __init__(self, input_dim: int, output_dim: int) -> None:
         super(InputEncoder, self).__init__()
-        self.linear = nn.Linear(input_dim, output_dim)
+        self.linear: nn.Module = nn.Linear(input_dim, output_dim)
 
-    def forward(self, x) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.linear(x)
         return x

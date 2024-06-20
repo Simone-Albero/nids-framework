@@ -49,7 +49,7 @@ def categorical_pre_processing(
     dataset: pd.DataFrame,
     properties: DatasetProperties,
     train_mask: pd.Series,
-    categorical_levels: int = 32,
+    categorical_levels: int,
 ) -> None:
     logging.debug(
         f"Mapping {len(properties.categorical_features)} categorical features to {categorical_levels} numeric tags..."
@@ -94,7 +94,7 @@ def bynary_label_conversion(
     )
 
 
-def one_hot_encoding(sample: Dict[str, Any], levels: int = 32) -> Dict[str, Any]:
+def one_hot_encoding(sample: Dict[str, Any], levels: int) -> Dict[str, Any]:
     features = sample["data"]
 
     one_hot = torch.nn.functional.one_hot(features, num_classes=levels)

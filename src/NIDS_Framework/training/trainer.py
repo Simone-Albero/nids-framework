@@ -25,15 +25,15 @@ class EarlyStopping:
         "val_loss_min",
     ]
 
-    def __init__(self, patience=7, delta=0):
-        self.patience = patience
-        self.delta = delta
-        self.counter = 0
-        self.best_score = None
-        self.early_stop = False
-        self.val_loss_min = np.Inf
+    def __init__(self, patience: Optional[int] = 7, delta: Optional[float] = 0):
+        self.patience: int = patience
+        self.delta: float = delta
+        self.counter: int = 0
+        self.best_score: float = None
+        self.early_stop: bool = False
+        self.val_loss_min: float = np.Inf
 
-    def __call__(self, val_loss, model):
+    def __call__(self, val_loss: float, model: nn.Module):
         score = -val_loss
 
         if self.best_score is None:
@@ -51,7 +51,7 @@ class EarlyStopping:
             self.save_checkpoint(val_loss, model)
             self.counter = 0
 
-    def save_checkpoint(self, val_loss, model):
+    def save_checkpoint(self, val_loss: float, model: nn.Module):
         logging.info(
             f"Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}). Saving model ..."
         )
@@ -88,7 +88,7 @@ class Trainer:
         self._criterion: _Loss = criterion
         self._optimizer: Optimizer = optimizer
         self._device: str = "cuda" if torch.cuda.is_available() else "cpu"
-        self._hook_system = hook_system.HookSystem()
+        self._hook_system: hook_system.HookSystem = hook_system.HookSystem()
 
     def add_callback(self, event: str) -> Callable:
         def decorator(func: Callable) -> Callable:
@@ -130,8 +130,10 @@ class Trainer:
                     validation_loss = self.validate(valid_data_loader)
                     early_stopping(validation_loss, self._model)
                     if early_stopping.early_stop:
-                        if epoch + 1 == n_epoch: logging.info(f"Early stopping in epoch: {epoch+1}")
-                        else: logging.info("Loading best model weights configuration.")
+                        if epoch + 1 == n_epoch:
+                            logging.info(f"Early stopping in epoch: {epoch+1}")
+                        else:
+                            logging.info("Loading best model weights configuration.")
                         self._model.load_state_dict(
                             torch.load("checkpoints/checkpoint.pt")
                         )
@@ -146,7 +148,7 @@ class Trainer:
         return train_loss
 
     def train_one_epoch(
-        self, data_loader: DataLoader, epoch_steps: Optional[int]
+        self, data_loader: DataLoader, epoch_steps: Optional[int] = None
     ) -> float:
         self._hook_system.execute_hooks(self.BEFORE_EPOCH)
         epoch_loss = 0.0
@@ -169,7 +171,7 @@ class Trainer:
         self._hook_system.execute_hooks(self.AFTER_EPOCH)
         return epoch_loss
 
-    def _train_one_batch(self, batch: Tuple) -> float:
+    def _train_one_batch(self, batch: Tuple[torch.Tensor, torch.Tensor]) -> float:
         self._hook_system.execute_hooks(self.BEFORE_BATCH)
         inputs, labels = batch
         inputs = inputs.to(self._device)
@@ -201,7 +203,7 @@ class Trainer:
         self._hook_system.execute_hooks(self.AFTER_VALIDATION)
         return validation_loss
 
-    def _validate_one_batch(self, batch: Tuple) -> float:
+    def _validate_one_batch(self, batch: Tuple[torch.Tensor, torch.Tensor]) -> float:
         inputs, labels = batch
         inputs = inputs.to(self._device)
         labels = labels.to(self._device)
@@ -229,7 +231,7 @@ class Trainer:
 
     def _test_one_batch(
         self,
-        batch: Tuple,
+        batch: Tuple[torch.Tensor, torch.Tensor],
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         inputs, labels = batch
         inputs = inputs.to(self._device)
