@@ -6,7 +6,6 @@ import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader
 
-from tools.utilities import trace_stats
 from data import (
     processor,
     utilities,
@@ -99,7 +98,6 @@ def data_loader_test():
         utilities.log_pre_processing(dataset, properties, train_mask)
 
     @trans_builder.add_step(order=3)
-    # @trace_stats()
     def categorical_conversion(
         dataset, properties, train_mask, categorical_levels=CATEGORICAL_LEV
     ):
@@ -118,14 +116,17 @@ def data_loader_test():
     X_vaild, y_valid = proc.get_valid()
     X_test, y_test = proc.get_test()
 
+    #device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = "mps" if torch.backends.mps.is_available() else "cpu"
+
     train_dataset = tabular_datasets.TabularDataset(
-        X_train[prop.numeric_features], X_train[prop.categorical_features], y_train
+        X_train[prop.numeric_features], X_train[prop.categorical_features], device, y_train
     )
     valid_dataset = tabular_datasets.TabularDataset(
-        X_vaild[prop.numeric_features], X_vaild[prop.categorical_features], y_valid
+        X_vaild[prop.numeric_features], X_vaild[prop.categorical_features], device, y_valid
     )
     test_dataset = tabular_datasets.TabularDataset(
-        X_test[prop.numeric_features], X_test[prop.categorical_features], y_test
+        X_test[prop.numeric_features], X_test[prop.categorical_features], device, y_test
     )
 
     @trans_builder.add_step(order=1)
@@ -133,11 +134,11 @@ def data_loader_test():
         return utilities.one_hot_encoding(sample, categorical_levels)
 
     transformations = trans_builder.build()
-    train_dataset.categorical_transformation = transformations
-    valid_dataset.categorical_transformation = transformations
-    test_dataset.categorical_transformation = transformations
+    train_dataset.set_categorical_transformation(transformations)
+    valid_dataset.set_categorical_transformation(transformations)
+    test_dataset.set_categorical_transformation(transformations)
 
-    BATCH_SIZE = 128
+    BATCH_SIZE = 64
     WINDOW_SIZE = 256
     EMBED_DIM = 128
     NUM_HEADS = 4
@@ -166,14 +167,14 @@ def data_loader_test():
     )
     valid_dataloader = DataLoader(
         valid_dataset,
-        batch_size=256,
+        batch_size=BATCH_SIZE,
         sampler=valid_sampler,
         drop_last=True,
         shuffle=False,
     )
     test_dataloader = DataLoader(
         test_dataset,
-        batch_size=256,
+        batch_size=BATCH_SIZE,
         sampler=test_sampler,
         drop_last=True,
         shuffle=False,
@@ -181,19 +182,19 @@ def data_loader_test():
 
     inputs, _ = next(iter(train_dataloader))
     input_shape = inputs.shape[-1]
-    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     input_encoding = input_encoder.InputEncoder(input_shape, EMBED_DIM)
     transformer_block = transformer.TransformerEncoderOnly(
         EMBED_DIM, NUM_HEADS, NUM_LAYERS, DIM_FF, DROPUT
     )
     class_head = classification_head.ClassificationHead(EMBED_DIM, 1)
+
     model = nn_classifier.NNClassifier(
         input_encoding, transformer_block, class_head
     ).to(device=device)
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"Total number of parameters: {total_params}")
+    logging.info(f"Total number of parameters: {total_params}")
 
     criterion = nn.BCELoss()
     optimizer = optim.Adam(
@@ -208,7 +209,7 @@ def data_loader_test():
     PATIENCE = 2
     DELTA = 0.01
 
-    train = trainer.Trainer(model, criterion, optimizer)
+    train = trainer.Trainer(model, criterion, optimizer, device)
     # train.load_model()
 
     train.train(

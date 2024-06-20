@@ -82,12 +82,12 @@ class Trainer:
     AFTER_TEST = "after_test"
 
     def __init__(
-        self, model: nn.Module, criterion: _Loss, optimizer: Optimizer
+        self, model: nn.Module, criterion: _Loss, optimizer: Optimizer, device: str, 
     ) -> None:
         self._model: nn.Module = model
         self._criterion: _Loss = criterion
         self._optimizer: Optimizer = optimizer
-        self._device: str = "cuda" if torch.cuda.is_available() else "cpu"
+        self._device: str = device
         self._hook_system: hook_system.HookSystem = hook_system.HookSystem()
 
     def add_callback(self, event: str) -> Callable:

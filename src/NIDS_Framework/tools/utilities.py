@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Optional
 import time
 import multiprocessing
 import statistics
@@ -15,26 +15,24 @@ def collect_stats(
     stats_queue: multiprocessing.Queue,
 ) -> None:
     process = psutil.Process(pid)
-
     global_cpu_usages = []
     proc_cpu_usages = []
     rss_memory_usages = []
     vms_memory_usages = []
 
     while not stop_event.is_set():
-        
         global_cpu_usage = psutil.cpu_percent(interval=0.1)
         proc_cpu_usage = process.cpu_percent(interval=0.1)
-        memory_usage = process.memory_info()
-        rss_memory_usage = memory_usage.rss / 1024 / 1024
-        vms_memory_usage = memory_usage.rss / 1024 / 1024
+        memory_info = process.memory_info()
+        rss_memory_usage = memory_info.rss / 1024 / 1024
+        vms_memory_usage = memory_info.rss / 1024 / 1024
 
         global_cpu_usages.append(global_cpu_usage)
         proc_cpu_usages.append(proc_cpu_usage)
         rss_memory_usages.append(rss_memory_usage)
         vms_memory_usages.append(vms_memory_usage)
-
         time.sleep(interval)
+
     stats_queue.put(
         (
             global_cpu_usages,
@@ -46,7 +44,7 @@ def collect_stats(
 
 
 def trace_stats(
-    interval: float = 0.1, file_path: str = "logs/log.csv", reset_logs: bool = False
+    interval: Optional[float] = 0.1, file_path: Optional[str] = "logs/log.csv", reset_logs: Optional[bool] = False
 ) -> Callable:
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
@@ -62,8 +60,7 @@ def trace_stats(
                     args=(curr_pid, stop_event, interval, stats_queue),
                 )
                 process.start()
-                result = func(*args, **kwargs)
-                return result
+                return func(*args, **kwargs)
 
             finally:
                 exec_time = time.time() - start_time
@@ -76,7 +73,7 @@ def trace_stats(
                     rss_memory_usages,
                     vms_memory_usages,
                 ) = stats_queue.get()
-                exec_time = exec_time
+                print(exec_time, global_cpu_usage, proc_cpu_usages, rss_memory_usages, vms_memory_usages)
                 med_gloabl_cpu_usage = statistics.median(global_cpu_usage)
                 med_proc_cpu_usage = statistics.median(proc_cpu_usages)
                 med_rss_memory_usage = statistics.median(rss_memory_usages)

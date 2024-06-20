@@ -96,9 +96,7 @@ def bynary_label_conversion(
 
 def one_hot_encoding(sample: Dict[str, Any], levels: int) -> Dict[str, Any]:
     features = sample["data"]
-
     one_hot = torch.nn.functional.one_hot(features, num_classes=levels)
-    logging.debug(f"One-hot transformation result:\n{one_hot}")
 
     if len(one_hot.shape) == 2:
         sample["data"] = one_hot.flatten()
