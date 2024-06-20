@@ -187,7 +187,7 @@ def data_loader_test():
     transformer_block = transformer.TransformerEncoderOnly(
         EMBED_DIM, NUM_HEADS, NUM_LAYERS, DIM_FF, DROPUT
     )
-    class_head = classification_head.ClassificationHead(EMBED_DIM)
+    class_head = classification_head.ClassificationHead(EMBED_DIM, 1)
     model = nn_classifier.NNClassifier(
         input_encoding, transformer_block, class_head
     ).to(device=device)
