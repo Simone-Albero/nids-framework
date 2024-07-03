@@ -174,8 +174,6 @@ class Trainer:
     def _train_one_batch(self, batch: Tuple[torch.Tensor, torch.Tensor]) -> float:
         self._hook_system.execute_hooks(self.BEFORE_BATCH)
         inputs, labels = batch
-        inputs = inputs.to(self._device)
-        labels = labels.to(self._device)
 
         self._optimizer.zero_grad()
         outputs = self._model(inputs)
@@ -190,11 +188,13 @@ class Trainer:
         logging.info("Starting validation loop...")
         self._hook_system.execute_hooks(self.BEFORE_VALIDATION)
         validation_loss = 0.0
+        
         self._model.eval()
-
         with torch.no_grad():
-            for batch in tqdm(data_loader, desc="Validating"):
-                validation_loss += self._validate_one_batch(batch)
+            for inputs, labels in tqdm(data_loader, desc="Validating"):
+                outputs = self._model(inputs)
+                loss = self._criterion(outputs, labels)
+                validation_loss += loss.item()
 
         validation_loss /= len(data_loader)
 
@@ -203,42 +203,22 @@ class Trainer:
         self._hook_system.execute_hooks(self.AFTER_VALIDATION)
         return validation_loss
 
-    def _validate_one_batch(self, batch: Tuple[torch.Tensor, torch.Tensor]) -> float:
-        inputs, labels = batch
-        inputs = inputs.to(self._device)
-        labels = labels.to(self._device)
-
-        outputs = self._model(inputs)
-        loss = self._criterion(outputs, labels)
-        return loss.item()
-
     def test(self, data_loader: DataLoader, metric: metrics.Metric) -> None:
         if metric is None:
             raise ValueError("Please provide metic before testing.")
         logging.info(f"Starting test loop...")
         self._hook_system.execute_hooks(self.BEFORE_TEST)
-        self._model.eval()
 
+        self._model.eval()
         with torch.no_grad():
-            for batch in tqdm(data_loader, desc="Testing"):
-                outputs, labels = self._test_one_batch(batch)
+            for inputs, labels in tqdm(data_loader, desc="Testing"):
+                outputs = self._model(inputs)
                 metric.step(outputs, labels)
 
         metric.apply()
         logging.info("Done with testing.")
         logging.info(f"{metric}\n")
         self._hook_system.execute_hooks(self.AFTER_TEST)
-
-    def _test_one_batch(
-        self,
-        batch: Tuple[torch.Tensor, torch.Tensor],
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        inputs, labels = batch
-        inputs = inputs.to(self._device)
-        labels = labels.to(self._device)
-
-        outputs = self._model(inputs)
-        return outputs, labels
 
     def save_model(self, path: Optional[str] = "saves/model.pt") -> None:
         logging.info("Saving model weights...")

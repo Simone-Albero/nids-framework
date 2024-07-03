@@ -139,15 +139,16 @@ def data_loader_test():
     test_dataset.set_categorical_transformation(transformations)
 
     BATCH_SIZE = 64
-    WINDOW_SIZE = 256
-    EMBED_DIM = 128
-    NUM_HEADS = 4
-    NUM_LAYERS = 10
+    WINDOW_SIZE = 8
+    EMBED_DIM = 64
+    NUM_HEADS = 2
+    NUM_LAYERS = 2
     DROPUT = 0.1
-    DIM_FF = 256
+    DIM_FF = 128
     LR = 0.001
     WHIGHT_DECAY = 0.01
 
+    # peso inversamente proporzionale alla massa di probabilità della classe
     train_sampler = samplers.FairSlidingWindowSampler(
         train_dataset, y_train, 0, window_size=WINDOW_SIZE
     )
