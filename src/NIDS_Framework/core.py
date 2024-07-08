@@ -7,6 +7,7 @@ from torch import nn, optim
 from torch.utils.data import DataLoader
 
 from data import (
+    properties,
     processor,
     utilities,
     transformation_builder,
@@ -24,70 +25,36 @@ from training import (
     metrics,
 )
 
+def dataset_evaluation():
+    dataset_path = "dataset/NF-ToN-IoT-V2/NF-ToN-IoT-v2.csv"
+    df = pd.read_csv(dataset_path)
 
-def data_loader_test():
-    prop = processor.DatasetProperties(
-        features=[
-            "NUM_PKTS_UP_TO_128_BYTES",
-            "SRC_TO_DST_SECOND_BYTES",
-            "OUT_PKTS",
-            "OUT_BYTES",
-            "NUM_PKTS_128_TO_256_BYTES",
-            "DST_TO_SRC_AVG_THROUGHPUT",
-            "DURATION_IN",
-            "L4_SRC_PORT",
-            "ICMP_TYPE",
-            "PROTOCOL",
-            "SERVER_TCP_FLAGS",
-            "IN_PKTS",
-            "NUM_PKTS_512_TO_1024_BYTES",
-            "CLIENT_TCP_FLAGS",
-            "TCP_WIN_MAX_IN",
-            "NUM_PKTS_256_TO_512_BYTES",
-            "SHORTEST_FLOW_PKT",
-            "MIN_IP_PKT_LEN",
-            "LONGEST_FLOW_PKT",
-            "L4_DST_PORT",
-            "MIN_TTL",
-            "DST_TO_SRC_SECOND_BYTES",
-            "NUM_PKTS_1024_TO_1514_BYTES",
-            "DURATION_OUT",
-            "FLOW_DURATION_MILLISECONDS",
-            "TCP_FLAGS",
-            "MAX_TTL",
-            "SRC_TO_DST_AVG_THROUGHPUT",
-            "ICMP_IPV4_TYPE",
-            "MAX_IP_PKT_LEN",
-            "RETRANSMITTED_OUT_BYTES",
-            "IN_BYTES",
-            "RETRANSMITTED_IN_BYTES",
-            "TCP_WIN_MAX_OUT",
-            "L7_PROTO",
-            "RETRANSMITTED_OUT_PKTS",
-            "RETRANSMITTED_IN_PKTS",
-        ],
-        categorical_features=[
-            "CLIENT_TCP_FLAGS",
-            "L4_SRC_PORT",
-            "TCP_FLAGS",
-            "ICMP_IPV4_TYPE",
-            "ICMP_TYPE",
-            "PROTOCOL",
-            "SERVER_TCP_FLAGS",
-            "L4_DST_PORT",
-            "L7_PROTO",
-        ],
-        labels="Attack",
-        benign_label="Benign",
-    )
+    for col in df.columns:
+        print(col)
+        print(len(df[col].unique()))
 
-    dataset_path = "dataset/NF-UNSW-NB15-v2.csv"
+
+def standard_pipeline():
+    CONFIG_PATH = "configs/dataset_properties.ini"
+    DATASET_NAME = "nf_ton_iot_v2"
+    named_prop = properties.NamedDatasetProperties(CONFIG_PATH)
+    prop = named_prop.get_properties(DATASET_NAME)
+
+    dataset_path = "dataset/NF-ToN-IoT-V2/NF-ToN-IoT-v2.csv"
     df = pd.read_csv(dataset_path)
     proc = processor.Processor(df, prop)
 
     trans_builder = transformation_builder.TransformationBuilder()
     CATEGORICAL_LEV = 32
     BOUND = 1_000_000_000
+
+    # @trans_builder.add_step(order=1)
+    # def date_conversion(dataset, properties, train_mask):
+    #     dataset['Stime'] = pd.to_datetime(dataset['Stime'])
+    #     dataset['Ltime'] = pd.to_datetime(dataset['Ltime'])
+
+    #     dataset['Stime'] = dataset['Stime'].astype(int) // 10**9
+    #     dataset['Ltime'] = dataset['Ltime'].astype(int) // 10**9
 
     @trans_builder.add_step(order=1)
     def base_pre_processing(dataset, properties, train_mask):
@@ -116,14 +83,20 @@ def data_loader_test():
     X_vaild, y_valid = proc.get_valid()
     X_test, y_test = proc.get_test()
 
-    #device = "cuda" if torch.cuda.is_available() else "cpu"
+    # device = "cuda" if torch.cuda.is_available() else "cpu"
     device = "mps" if torch.backends.mps.is_available() else "cpu"
 
     train_dataset = tabular_datasets.TabularDataset(
-        X_train[prop.numeric_features], X_train[prop.categorical_features], device, y_train
+        X_train[prop.numeric_features],
+        X_train[prop.categorical_features],
+        device,
+        y_train,
     )
     valid_dataset = tabular_datasets.TabularDataset(
-        X_vaild[prop.numeric_features], X_vaild[prop.categorical_features], device, y_valid
+        X_vaild[prop.numeric_features],
+        X_vaild[prop.categorical_features],
+        device,
+        y_valid,
     )
     test_dataset = tabular_datasets.TabularDataset(
         X_test[prop.numeric_features], X_test[prop.categorical_features], device, y_test
@@ -236,7 +209,7 @@ def main():
         format="%(message)s",
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
-    data_loader_test()
+    standard_pipeline()
 
 
 if __name__ == "__main__":

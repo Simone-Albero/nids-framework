@@ -7,7 +7,6 @@ import torch
 
 from data.processor import DatasetProperties
 
-
 def base_pre_processing(
     dataset: pd.DataFrame,
     properties: DatasetProperties,
