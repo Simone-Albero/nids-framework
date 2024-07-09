@@ -1,7 +1,7 @@
 import logging
-from rich.logging import RichHandler
 
 import pandas as pd
+from rich.logging import RichHandler
 import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader
@@ -36,11 +36,11 @@ def dataset_evaluation():
 
 def standard_pipeline():
     CONFIG_PATH = "configs/dataset_properties.ini"
-    DATASET_NAME = "nf_ton_iot_v2"
+    DATASET_NAME = "nf_unsw_nb15_v2"
     named_prop = properties.NamedDatasetProperties(CONFIG_PATH)
     prop = named_prop.get_properties(DATASET_NAME)
 
-    dataset_path = "dataset/NF-ToN-IoT-V2/NF-ToN-IoT-v2.csv"
+    dataset_path = "dataset/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2.csv"
     df = pd.read_csv(dataset_path)
     proc = processor.Processor(df, prop)
 
@@ -83,8 +83,11 @@ def standard_pipeline():
     X_vaild, y_valid = proc.get_valid()
     X_test, y_test = proc.get_test()
 
-    # device = "cuda" if torch.cuda.is_available() else "cpu"
-    device = "mps" if torch.backends.mps.is_available() else "cpu"
+    device = "cpu"
+    if torch.cuda.is_available():
+        device = "cuda"
+    elif torch.backends.mps.is_available():
+        device = "mps"
 
     train_dataset = tabular_datasets.TabularDataset(
         X_train[prop.numeric_features],

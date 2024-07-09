@@ -218,6 +218,7 @@ class Trainer:
         metric.apply()
         logging.info("Done with testing.")
         logging.info(f"{metric}\n")
+        metric.save()
         self._hook_system.execute_hooks(self.AFTER_TEST)
 
     def save_model(self, path: Optional[str] = "saves/model.pt") -> None:

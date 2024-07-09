@@ -46,7 +46,6 @@ class NamedDatasetProperties:
         self.SEPARATOR = saparator
     
     def get_properties(self, name: str):
-        print(self.config.sections())
         if name in self.config:
             logging.info(f"Reading '{name}' from '{self.config_path}'.")
             spec = self.config[name]

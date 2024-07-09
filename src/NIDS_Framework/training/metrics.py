@@ -1,4 +1,6 @@
 from typing import Optional
+import os
+
 import torch
 
 
@@ -40,6 +42,17 @@ class Metric():
             f"False Positives (FP): {self._FP}\n"
             f"False Negatives (FN): {self._FN}"
         )
+    
+    def save(self, file_path: Optional[str] = "logs/metrics.csv", reset_logs: Optional[bool] = False):
+        if not os.path.exists(file_path) or reset_logs:
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            with open(file_path, "w") as f:
+                f.write(f"Precision,Recall,F1,TP,TN,FP,FN\n")
+
+        with open(file_path, "a") as f:
+            f.write(
+                f"{self._precision},{self._recall},{self._F1},{self._TP},{self._TN},{self._FP},{self._FN}\n"
+            )
 
 
 class ClassificationMetric(Metric):
