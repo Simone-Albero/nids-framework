@@ -25,36 +25,20 @@ from training import (
     metrics,
 )
 
-def dataset_evaluation():
-    dataset_path = "dataset/NF-ToN-IoT-V2/NF-ToN-IoT-v2.csv"
-    df = pd.read_csv(dataset_path)
-
-    for col in df.columns:
-        print(col)
-        print(len(df[col].unique()))
-
-
 def standard_pipeline():
     CONFIG_PATH = "configs/dataset_properties.ini"
-    DATASET_NAME = "nf_unsw_nb15_v2"
+    DATASET_NAME = "ugr16_custom"
     named_prop = properties.NamedDatasetProperties(CONFIG_PATH)
     prop = named_prop.get_properties(DATASET_NAME)
 
-    dataset_path = "dataset/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2.csv"
+    dataset_path = "dataset/UGR16/custom/ms_train.csv"
     df = pd.read_csv(dataset_path)
+
     proc = processor.Processor(df, prop)
 
     trans_builder = transformation_builder.TransformationBuilder()
     CATEGORICAL_LEV = 32
     BOUND = 1_000_000_000
-
-    # @trans_builder.add_step(order=1)
-    # def date_conversion(dataset, properties, train_mask):
-    #     dataset['Stime'] = pd.to_datetime(dataset['Stime'])
-    #     dataset['Ltime'] = pd.to_datetime(dataset['Ltime'])
-
-    #     dataset['Stime'] = dataset['Stime'].astype(int) // 10**9
-    #     dataset['Ltime'] = dataset['Ltime'].astype(int) // 10**9
 
     @trans_builder.add_step(order=1)
     def base_pre_processing(dataset, properties, train_mask):
@@ -115,17 +99,17 @@ def standard_pipeline():
     test_dataset.set_categorical_transformation(transformations)
 
     BATCH_SIZE = 64
-    WINDOW_SIZE = 8
+    WINDOW_SIZE = 16
     EMBED_DIM = 64
     NUM_HEADS = 2
     NUM_LAYERS = 2
     DROPUT = 0.1
     DIM_FF = 128
-    LR = 0.001
-    WHIGHT_DECAY = 0.01
+    LR = 0.0005
+    WHIGHT_DECAY = 0.001
 
     # peso inversamente proporzionale alla massa di probabilità della classe
-    train_sampler = samplers.FairSlidingWindowSampler(
+    train_sampler = samplers.FairRandomWindowSampler(
         train_dataset, y_train, 0, window_size=WINDOW_SIZE
     )
     valid_sampler = samplers.RandomSlidingWindowSampler(
@@ -180,9 +164,9 @@ def standard_pipeline():
         weight_decay=WHIGHT_DECAY,
     )
 
-    N_EPOCH = 4
-    EPOCH_STEPS = 64
-    EPOCH_UNTIL_VALIDATION = 4
+    N_EPOCH = 10
+    EPOCH_STEPS = 128
+    EPOCH_UNTIL_VALIDATION = 100
     PATIENCE = 2
     DELTA = 0.01
 

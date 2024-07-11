@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader
 
 from tools import hook_system
 from training import metrics
+from tools.utilities import trace_stats
 
 
 class EarlyStopping:
@@ -101,6 +102,7 @@ class Trainer:
 
         return decorator
 
+    @trace_stats()
     def train(
         self,
         n_epoch: int,
@@ -126,7 +128,7 @@ class Trainer:
             logging.info(f"Epoch: {epoch} Loss: {epoch_loss:.6f}.\n")
 
             if valid_data_loader and epochs_until_validation:
-                if (epoch + 1) % epochs_until_validation == 0 or epoch + 1 == n_epoch:
+                if (epoch + 1) % epochs_until_validation == 0:
                     validation_loss = self.validate(valid_data_loader)
                     early_stopping(validation_loss, self._model)
                     if early_stopping.early_stop:
@@ -203,6 +205,7 @@ class Trainer:
         self._hook_system.execute_hooks(self.AFTER_VALIDATION)
         return validation_loss
 
+    @trace_stats()
     def test(self, data_loader: DataLoader, metric: metrics.Metric) -> None:
         if metric is None:
             raise ValueError("Please provide metic before testing.")

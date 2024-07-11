@@ -92,7 +92,6 @@ def bynary_label_conversion(
         dataset[properties.labels].astype("str") == str(properties.benign_label)
     )
 
-
 def one_hot_encoding(sample: Dict[str, Any], levels: int) -> Dict[str, Any]:
     features = sample["data"]
     one_hot = torch.nn.functional.one_hot(features, num_classes=levels)
@@ -102,4 +101,30 @@ def one_hot_encoding(sample: Dict[str, Any], levels: int) -> Dict[str, Any]:
     elif len(one_hot.shape) > 2:
         sample["data"] = one_hot.view(one_hot.size(0), -1)
 
+    return sample
+
+def log_transformation(sample: Dict[str, Any], min_values: pd.Series, max_values: pd.Series) -> Dict[str, Any]:
+    features = sample["data"]
+    gaps = max_values - min_values
+
+    mask = gaps != 0
+    features = torch.where(
+        mask, torch.log(features + 1) / torch.log(gaps + 1), torch.zeros_like(features)
+    )
+    features = torch.where(mask, features, torch.zeros_like(features))
+    sample["data"] = features
+    return sample
+
+def categorical_value_encoding(sample: Dict[str, Any], categorical_levels: pd.DataFrame, categorical_bound: int) -> Dict[str, Any]:
+    features = sample["data"]
+    categorical_levels = categorical_levels[:, :(categorical_bound - 1)]
+
+    value_encoding = torch.zeros_like(features)
+    for col_idx, col in enumerate(features.t()):
+        for row_idx, val in enumerate(col):
+            mask = (categorical_levels[:, col_idx] == val).nonzero()
+            if mask.numel() > 0:
+                value_encoding[row_idx, col_idx] = mask.item() + 1
+
+    sample["data"] = value_encoding
     return sample

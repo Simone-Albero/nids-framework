@@ -44,7 +44,7 @@ def collect_stats(
 
 
 def trace_stats(
-    interval: Optional[float] = 0.1, file_path: Optional[str] = "logs/log.csv", reset_logs: Optional[bool] = False
+    interval: Optional[float] = 5, file_path: Optional[str] = "logs/log.csv", reset_logs: Optional[bool] = False
 ) -> Callable:
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
@@ -73,7 +73,6 @@ def trace_stats(
                     rss_memory_usages,
                     vms_memory_usages,
                 ) = stats_queue.get()
-                print(exec_time, global_cpu_usage, proc_cpu_usages, rss_memory_usages, vms_memory_usages)
                 med_gloabl_cpu_usage = statistics.median(global_cpu_usage)
                 med_proc_cpu_usage = statistics.median(proc_cpu_usages)
                 med_rss_memory_usage = statistics.median(rss_memory_usages)
