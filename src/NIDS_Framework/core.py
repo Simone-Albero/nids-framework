@@ -99,7 +99,7 @@ def standard_pipeline():
     test_dataset.set_categorical_transformation(transformations)
 
     BATCH_SIZE = 64
-    WINDOW_SIZE = 2
+    WINDOW_SIZE = 512
     EMBED_DIM = 256
     NUM_HEADS = 2
     NUM_LAYERS = 4
