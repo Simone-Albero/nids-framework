@@ -26,10 +26,12 @@ def fixed_windows_dataset():
     df = pd.read_csv(dataset_path)
     df['te'] = pd.to_datetime(df['te'])
 
-    WINDOW_SIZE_MS = 10
+    WINDOW_SIZE_MS = pd.Timedelta(milliseconds=10)
+    MAX_WINDOW = 32
     last_stamp = df.iloc[-1]['te']
     curr_stamp = df.iloc[0]['te']
 
+    df_1 = pd.DataFrame()
     df_2 = pd.DataFrame()
     df_4 = pd.DataFrame()
     df_8 = pd.DataFrame()
@@ -38,32 +40,35 @@ def fixed_windows_dataset():
 
     i = 0
     while curr_stamp < last_stamp:
-        gap = curr_stamp + pd.to_timedelta(WINDOW_SIZE_MS, unit='ms')
-        occurrences = 0
+        curr_window = MAX_WINDOW
+        if i + curr_window > len(df):
+            break
 
-        while i + occurrences < len(df) and df.iloc[i + occurrences]['te'] < gap:
-            occurrences += 1
+        gap = df.iloc[i + curr_window]['te'] - curr_stamp
 
-        if occurrences == 32:
-            df_32 = pd.concat([df_32, df.iloc[i:i + occurrences]], axis=0)
+        while gap > WINDOW_SIZE_MS and curr_window > 1:
+            curr_window = curr_window // 2
+            gap = df.iloc[i + curr_window]['te'] - curr_stamp
 
-        elif occurrences == 16:
-            df_16 = pd.concat([df_16, df.iloc[i:i + occurrences]], axis=0)
+        if curr_window == 32:
+            df_32 = pd.concat([df_32, df.iloc[i:i + curr_window]], axis=0)
+        elif curr_window == 16:
+            df_16 = pd.concat([df_16, df.iloc[i:i + curr_window]], axis=0)
+        elif curr_window == 8:
+            df_8 = pd.concat([df_8, df.iloc[i:i + curr_window]], axis=0)
+        elif curr_window == 4:
+            df_4 = pd.concat([df_4, df.iloc[i:i + curr_window]], axis=0)
+        elif curr_window == 2:
+            df_2 = pd.concat([df_2, df.iloc[i:i + curr_window]], axis=0)
+        elif curr_window == 1:
+            df_1 = pd.concat([df_1, df.iloc[i:i + curr_window]], axis=0)
+        
+        i += curr_window
 
-        elif occurrences == 8:
-            df_8 = pd.concat([df_8, df.iloc[i:i + occurrences]], axis=0)
-
-        elif occurrences == 4:
-            df_4 = pd.concat([df_4, df.iloc[i:i + occurrences]], axis=0)
-
-        elif occurrences == 2:
-            df_2 = pd.concat([df_2, df.iloc[i:i + occurrences]], axis=0)
-
-        i += occurrences
         curr_stamp = df.iloc[i]['te']
-
         print(f"curr_stamp: {curr_stamp}, last_stamp: {last_stamp}", end='\r')
     
+    df_1.to_csv('dataset/UGR16/custom/1.csv', index=False)
     df_2.to_csv('dataset/UGR16/custom/2.csv', index=False)
     df_4.to_csv('dataset/UGR16/custom/4.csv', index=False)
     df_8.to_csv('dataset/UGR16/custom/8.csv', index=False)

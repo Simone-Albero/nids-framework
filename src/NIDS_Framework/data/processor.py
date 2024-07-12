@@ -47,6 +47,7 @@ class Processor:
         )
 
         indices = np.arange(total_samples)
+        np.random.seed(42)
         np.random.shuffle(indices)
 
         train_indices = indices[:num_train]

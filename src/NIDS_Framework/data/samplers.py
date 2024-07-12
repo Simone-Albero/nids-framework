@@ -7,10 +7,18 @@ import torch
 
 
 class RandomSlidingWindowSampler(Sampler):
+    
+    __slots__ = [
+        "dataset",
+        "window_size",
+        "num_samples",
+    ]
+
     def __init__(self, dataset: Dataset, window_size: int) -> None:
         self.dataset = dataset
         self.window_size = window_size
         self.num_samples = len(dataset) - window_size + 1
+        random.seed(42)
 
     def __iter__(self):
         indices = [
@@ -19,7 +27,36 @@ class RandomSlidingWindowSampler(Sampler):
         ]
         
         return iter([
-            torch.arange(start - self.window_size + 1, start + 1)
+            torch.arange(start - self.window_size, start)
+            for start in indices
+        ])
+
+    def __len__(self):
+        return self.num_samples
+
+class FixedSlidingWindowSampler(Sampler):
+
+    __slots__ = [
+        "dataset",
+        "window_size",
+        "num_samples",
+    ]
+
+    def __init__(self, dataset: Dataset, window_size: int) -> None:
+        self.dataset = dataset
+        self.window_size = window_size
+        self.num_samples = len(dataset) // window_size
+        random.seed(42)
+
+    def __iter__(self):
+        indices = [
+            start_idx * self.window_size
+            for start_idx in range(self.num_samples)
+        ]
+        random.shuffle(indices)
+        
+        return iter([
+            torch.arange(start - self.window_size, start)
             for start in indices
         ])
 
@@ -28,7 +65,7 @@ class RandomSlidingWindowSampler(Sampler):
     
 class FairSlidingWindowSampler(Sampler):
     __slots__ = [
-        "_dataset",
+        "dataset",
         "window_size",
         "_malicious_indices",
         "_legit_indices"
