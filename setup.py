@@ -6,9 +6,15 @@ setup(
     package_dir={'': 'src'},
     packages=find_packages(where='src'),
     install_requires=[
-        # dependencies here
         'numpy',
         'pandas',
+        'torch',
+        'torchvision',
+        'torchaudio',
+        'tqdm',
+        'psutil',
+        'rich',
+        'matplotlib'
     ],
     author='Simone Albero',
     author_email='sim.albero@stud.uniroma3.it',

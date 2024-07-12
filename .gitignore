@@ -3,6 +3,7 @@ dataset/
 logs/
 checkpoints/
 saves/
+plots/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

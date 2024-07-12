@@ -32,7 +32,7 @@ class EarlyStopping:
         self.counter: int = 0
         self.best_score: float = None
         self.early_stop: bool = False
-        self.val_loss_min: float = np.Inf
+        self.val_loss_min: float = np.inf
 
     def __call__(self, val_loss: float, model: nn.Module):
         score = -val_loss

@@ -99,18 +99,17 @@ def standard_pipeline():
     test_dataset.set_categorical_transformation(transformations)
 
     BATCH_SIZE = 64
-    WINDOW_SIZE = 16
-    EMBED_DIM = 64
+    WINDOW_SIZE = 8
+    EMBED_DIM = 256
     NUM_HEADS = 2
-    NUM_LAYERS = 2
+    NUM_LAYERS = 4
     DROPUT = 0.1
     DIM_FF = 128
     LR = 0.0005
     WHIGHT_DECAY = 0.001
 
-    # peso inversamente proporzionale alla massa di probabilità della classe
-    train_sampler = samplers.FairRandomWindowSampler(
-        train_dataset, y_train, 0, window_size=WINDOW_SIZE
+    train_sampler = samplers.RandomSlidingWindowSampler(
+        train_dataset, window_size=WINDOW_SIZE
     )
     valid_sampler = samplers.RandomSlidingWindowSampler(
         valid_dataset, window_size=WINDOW_SIZE
@@ -157,15 +156,20 @@ def standard_pipeline():
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logging.info(f"Total number of parameters: {total_params}")
 
-    criterion = nn.BCELoss()
+    class_proportions = y_train.value_counts(normalize=True).sort_index()
+    weights = 1.0 / class_proportions.values
+    weights = weights / weights.sum()
+    logging.info(f"weights: {weights}")
+
+    criterion = nn.BCELoss(weight=torch.tensor(weights, dtype=torch.float32, device=device)[1])
     optimizer = optim.Adam(
         model.parameters(),
         lr=LR,
         weight_decay=WHIGHT_DECAY,
     )
 
-    N_EPOCH = 10
-    EPOCH_STEPS = 128
+    N_EPOCH = 4
+    EPOCH_STEPS = 1000
     EPOCH_UNTIL_VALIDATION = 100
     PATIENCE = 2
     DELTA = 0.01

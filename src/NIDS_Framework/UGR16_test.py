@@ -21,6 +21,55 @@ def ms_stamp_update():
 
     df.to_csv('dataset/UGR16/custom/ms_test.csv', index=False)
 
+def fixed_windows_dataset():
+    dataset_path = "dataset/UGR16/custom/ms_train.csv"
+    df = pd.read_csv(dataset_path)
+    df['te'] = pd.to_datetime(df['te'])
+
+    WINDOW_SIZE_MS = 10
+    last_stamp = df.iloc[-1]['te']
+    curr_stamp = df.iloc[0]['te']
+
+    df_2 = pd.DataFrame()
+    df_4 = pd.DataFrame()
+    df_8 = pd.DataFrame()
+    df_16 = pd.DataFrame()
+    df_32 = pd.DataFrame()
+
+    i = 0
+    while curr_stamp < last_stamp:
+        gap = curr_stamp + pd.to_timedelta(WINDOW_SIZE_MS, unit='ms')
+        occurrences = 0
+
+        while i + occurrences < len(df) and df.iloc[i + occurrences]['te'] < gap:
+            occurrences += 1
+
+        if occurrences == 32:
+            df_32 = pd.concat([df_32, df.iloc[i:i + occurrences]], axis=0)
+
+        elif occurrences == 16:
+            df_16 = pd.concat([df_16, df.iloc[i:i + occurrences]], axis=0)
+
+        elif occurrences == 8:
+            df_8 = pd.concat([df_8, df.iloc[i:i + occurrences]], axis=0)
+
+        elif occurrences == 4:
+            df_4 = pd.concat([df_4, df.iloc[i:i + occurrences]], axis=0)
+
+        elif occurrences == 2:
+            df_2 = pd.concat([df_2, df.iloc[i:i + occurrences]], axis=0)
+
+        i += occurrences
+        curr_stamp = df.iloc[i]['te']
+
+        print(f"curr_stamp: {curr_stamp}, last_stamp: {last_stamp}", end='\r')
+    
+    df_2.to_csv('dataset/UGR16/custom/2.csv', index=False)
+    df_4.to_csv('dataset/UGR16/custom/4.csv', index=False)
+    df_8.to_csv('dataset/UGR16/custom/8.csv', index=False)
+    df_16.to_csv('dataset/UGR16/custom/16.csv', index=False)
+    df_32.to_csv('dataset/UGR16/custom/32.csv', index=False)
+
 def fixed_windows_analisys():
     dataset_path = "dataset/UGR16/custom/ms_train.csv"
     df = pd.read_csv(dataset_path)
@@ -68,68 +117,35 @@ def fixed_windows_analisys():
     plt.show()
 
 def fixed_gap_analisys():
-    # dataset_path = "dataset/UGR16/custom/ms_train.csv"
-    # df = pd.read_csv(dataset_path)
-    # df['te'] = pd.to_datetime(df['te'])
+    dataset_path = "dataset/UGR16/custom/ms_train.csv"
+    df = pd.read_csv(dataset_path)
+    df['te'] = pd.to_datetime(df['te'])
 
-    # WINDOW_SIZE_MS = 10
-    # last_stamp = df.iloc[-1]['te']
-    # curr_stamp = df.iloc[0]['te']
+    WINDOW_SIZE_MS = 10
+    last_stamp = df.iloc[-1]['te']
+    curr_stamp = df.iloc[0]['te']
 
-    # window_occurrences = {}
+    window_occurrences = {}
 
-    # i = 0
-    # while curr_stamp < last_stamp:
-    #     gap = curr_stamp + pd.to_timedelta(WINDOW_SIZE_MS, unit='ms')
-    #     occurrences = 0
+    i = 0
+    while curr_stamp < last_stamp:
+        gap = curr_stamp + pd.to_timedelta(WINDOW_SIZE_MS, unit='ms')
+        occurrences = 0
 
-    #     while i < len(df) and df.iloc[i]['te'] < gap:
-    #         occurrences += 1
-    #         i += 1
-    #         if i < len(df):
-    #             curr_stamp = df.iloc[i]['te']
-    #         else:
-    #             break
+        while i < len(df) and df.iloc[i]['te'] < gap:
+            occurrences += 1
+            i += 1
+            if i < len(df):
+                curr_stamp = df.iloc[i]['te']
+            else:
+                break
 
-    #     if occurrences not in window_occurrences:
-    #         window_occurrences[occurrences] = 0
+        if occurrences not in window_occurrences:
+            window_occurrences[occurrences] = 0
 
-    #     window_occurrences[occurrences] += 1
+        window_occurrences[occurrences] += 1
 
-    #     print(f"curr_stamp: {curr_stamp}, last_stamp: {last_stamp}", end='\r')
-
-
-
-    # for i in tqdm(range(len(df))):
-    #     start = df.iloc[i]['te']
-    #     end = start + pd.to_timedelta(WINDOW_SIZE_MS, unit='ms')
-    #     occurrences = df[(df['te'] >= start) & (df['te'] < end)].shape[0]
-
-    #     if occurrences not in window_occurrences:
-    #         window_occurrences[occurrences] = 0
-
-    #     window_occurrences[occurrences] += 1
-
-    # STRIDE = 1
-    # last_stamp = df.iloc[-1]['te']
-    # start = df.iloc[0]['te']
-    # end = start + pd.to_timedelta(WINDOW_SIZE_MS, unit='ms')
-    # while end <= last_stamp:
-    #     occurrences = df[(df['te'] >= start) & (df['te'] < end)].shape[0]
-
-    #     if occurrences not in window_occurrences:
-    #         window_occurrences[occurrences] = 0
-
-    #     window_occurrences[occurrences] += 1
-    #     print(f"End: {end}, Last Stamp: {last_stamp}", end='\r')
-
-    #     start = end
-    #     end = start + pd.to_timedelta(WINDOW_SIZE_MS, unit='ms')
-
-    # with open('saves/window_occurrences.pkl', 'wb') as file:
-    #     pickle.dump(window_occurrences, file)
-
-    # print(len(window_occurrences))
+        print(f"curr_stamp: {curr_stamp}, last_stamp: {last_stamp}", end='\r')
 
     with open('saves/window_occurrences.pkl', 'rb') as file:
         window_occurrences = pickle.load(file)
@@ -192,7 +208,7 @@ def main():
         format="%(message)s",
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
-    fixed_gap_analisys()
+    fixed_windows_dataset()
 
 
 if __name__ == "__main__":
