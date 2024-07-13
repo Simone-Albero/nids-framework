@@ -76,24 +76,24 @@ def fixed_windows_dataset():
     MAX_WINDOW = 64
     MIN_WINDOW = 2
 
-    dfs = {1: [], 2: [], 4: [], 8: [], 16: [], 32: [], 64: []}
+    dfs = {2: [], 4: [], 8: [], 16: [], 32: [], 64: []}
 
     for i in tqdm(range(len(df))):
-        curr_window = MIN_WINDOW
         curr_stamp = df.iloc[i]['te']
+        window_end_time = curr_stamp + WINDOW_SIZE_MS
 
-        if i + MAX_WINDOW >= len(df):
-            break
-
-        while df.iloc[i + curr_window - 1]['te'] - curr_stamp <= WINDOW_SIZE_MS and curr_window <= MAX_WINDOW:
-            dfs[curr_window].append(i + curr_window - 1)
-            curr_window *= 2
+        for window_size in dfs.keys():            
+            if i + window_size - 1 < len(df) and df.iloc[i + window_size - 1]['te'] <= window_end_time:
+                dfs[window_size].append(i + window_size - 1)
+            else:
+                break
 
     for window_size, df_list in dfs.items():
         if df_list:
             indices_df = pd.DataFrame(df_list, columns=['index'])
-            indices_df.to_csv(f"dataset/UGR16/fixed/{window_size}_test.csv", index=False)
-            print(f"{window_size}: {len(df_list)}")
+            indices_df.to_csv(f"dataset/UGR16/fixed/{window_size}.csv", index=False)
+            print(f"{window_size}: {len(df_list)}")    
+
 
 def main():
     debug_level = logging.INFO
