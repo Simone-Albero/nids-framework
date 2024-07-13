@@ -71,9 +71,9 @@ def proportion_analysis():
 
 def proportion_fix():
     P = 0.0185
-    WINDOW_SIZE = 32
+    WINDOW_SIZE = 8
 
-    dataset_path = "dataset/UGR16/custom/32_test.csv"
+    dataset_path = f"dataset/UGR16/custom/{WINDOW_SIZE}_test_l.csv"
     df = pd.read_csv(dataset_path)
 
     print("Generating blocks...")
@@ -100,7 +100,7 @@ def proportion_fix():
 
     df_fixed = pd.concat([df_positive, df_negative]).reset_index(drop=True)
     print(len(df_fixed))
-    output_path = f"dataset/UGR16/fixed/{WINDOW_SIZE}_fixed.csv"
+    output_path = f"dataset/UGR16/fixed/{WINDOW_SIZE}_test_fixed.csv"
     df_fixed.to_csv(output_path, index=False)
 
 
