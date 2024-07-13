@@ -8,12 +8,6 @@ import torch
 
 class RandomSlidingWindowSampler(Sampler):
     
-    __slots__ = [
-        "dataset",
-        "window_size",
-        "num_samples",
-    ]
-
     def __init__(self, dataset: Dataset, window_size: int) -> None:
         self.dataset = dataset
         self.window_size = window_size
@@ -22,7 +16,7 @@ class RandomSlidingWindowSampler(Sampler):
 
     def __iter__(self):
         indices = [
-            random.randint(self.window_size - 1, len(self.dataset))
+            random.randint(self.window_size - 1, len(self.dataset) - 1)
             for _ in range(self.num_samples)
         ]
         
