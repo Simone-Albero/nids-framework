@@ -29,10 +29,10 @@ class TabularDataset(Dataset):
             self.labels = None
 
         self.stats = {
-            "mean": self.numeric_data.mean(dim=0),
-            "std": self.numeric_data.std(dim=0),
-            "min": self.numeric_data.min(dim=0),
-            "max": self.numeric_data.max(dim=0),
+            "mean": None,
+            "std": None,
+            "min": None,
+            "max": None,
         }
 
         self.numeric_transformation: Compose = []

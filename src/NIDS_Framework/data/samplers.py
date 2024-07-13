@@ -27,37 +27,34 @@ class RandomSlidingWindowSampler(Sampler):
         ]
         
         return iter([
-            torch.arange(start - self.window_size, start)
+            torch.arange(start - self.window_size + 1, start + 1)
             for start in indices
         ])
 
     def __len__(self):
         return self.num_samples
 
-class FixedSlidingWindowSampler(Sampler):
+class FixedWindowSampler(Sampler):
 
     __slots__ = [
         "dataset",
+        "indices",
         "window_size",
         "num_samples",
     ]
 
-    def __init__(self, dataset: Dataset, window_size: int) -> None:
+    def __init__(self, dataset: Dataset, indices: pd.Series, window_size: int) -> None:
         self.dataset = dataset
+        self.indices = indices
         self.window_size = window_size
-        self.num_samples = len(dataset) // window_size
-        random.seed(42)
+        self.num_samples = len(indices)
 
     def __iter__(self):
-        indices = [
-            start_idx * self.window_size
-            for start_idx in range(self.num_samples)
-        ]
-        random.shuffle(indices)
+        random_indices = self.indices.sample(frac=1).reset_index(drop=True)
         
         return iter([
-            torch.arange(start - self.window_size, start)
-            for start in indices
+            torch.arange(start - self.window_size + 1, start + 1).tolist()
+            for start in random_indices
         ])
 
     def __len__(self):

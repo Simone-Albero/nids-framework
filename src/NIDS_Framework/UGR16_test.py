@@ -69,7 +69,8 @@ def fixed_windows_analisys():
     plt.show()
 
 def fixed_windows_dataset():
-    dataset_path = "dataset/UGR16/custom/ms_train.csv"
+    DATASET_NAME = "ms_1_test"
+    dataset_path = "dataset/UGR16/custom/" + DATASET_NAME + ".csv"
     df = pd.read_csv(dataset_path)
     df['te'] = pd.to_datetime(df['te'])
 
@@ -82,12 +83,12 @@ def fixed_windows_dataset():
 
     for window_size in tqdm(dfs.keys()):
         valid_indices = np.where((df['te'].shift(-window_size + 1) <= window_end_times)[:len(df) - window_size + 1])[0] + window_size - 1
-        dfs[window_size].extend(valid_indices)
+        dfs[window_size] = valid_indices.tolist()
 
     for window_size, df_list in dfs.items():
         if df_list:
             indices_df = pd.DataFrame(df_list, columns=['index'])
-            indices_df.to_csv(f"dataset/UGR16/fixed/{window_size}.csv", index=False)
+            indices_df.to_csv(f"dataset/UGR16/fixed/{DATASET_NAME}_{window_size}.csv", index=False)
             print(f"{window_size}: {len(df_list)}")   
 
 def avg_durations():
@@ -126,7 +127,7 @@ def avg_durations():
     plt.xticks(indices, xs, rotation=90)
     plt.tight_layout()
 
-    plt.savefig('saves/duration_occurrences.png', bbox_inches='tight')
+    plt.savefig('plots/duration_occurrences.png', bbox_inches='tight')
     plt.show()
 
 
@@ -138,7 +139,7 @@ def main():
         format="%(message)s",
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
-    avg_durations()
+    fixed_windows_dataset()
 
 
 if __name__ == "__main__":

@@ -32,13 +32,23 @@ def standard_pipeline():
     named_prop = properties.NamedDatasetProperties(CONFIG_PATH)
     prop = named_prop.get_properties(DATASET_NAME)
 
-    train_path = "dataset/UGR16/custom/ms_train.csv"
-    df = pd.read_csv(train_path)
+    # train_path = "dataset/UGR16/ms_1.csv"
+    # df = pd.read_csv(train_path)
+    #df_train, df_test = train_test_split(df, test_size=0.3, random_state=42)
+    # df_train['te'] = pd.to_datetime(df_train['te'])
+    # df_train = df_train.sort_values(by='te')
+    # df_test['te'] = pd.to_datetime(df_test['te'])
+    # df_test = df_test.sort_values(by='te')
 
-    df_train, df_test = train_test_split(df, test_size=0.2, random_state=42)
+    # df_train.to_csv("dataset/UGR16/custom/ms_1_train.csv", index=False)
+    # df_test.to_csv("dataset/UGR16/custom/ms_1_test.csv", index=False)
+    # exit(1)
+    
+    train_path = "dataset/UGR16/custom/ms_1_train.csv"
+    df_train = pd.read_csv(train_path)
 
-    # test_path = "dataset/UGR16/custom/ms_test.csv"
-    # df_test = pd.read_csv(train_path, nrows=1000000)
+    test_path = "dataset/UGR16/custom/ms_1_test.csv"
+    df_test = pd.read_csv(test_path)
 
     trans_builder = transformation_builder.TransformationBuilder()
     CATEGORICAL_LEV = 32
@@ -88,11 +98,14 @@ def standard_pipeline():
         X_train[prop.numeric_features],
         X_train[prop.categorical_features],
         device,
-        y_train,
+        y_train
     )
 
     test_dataset = tabular_datasets.TabularDataset(
-        X_test[prop.numeric_features], X_test[prop.categorical_features], device, y_test
+        X_test[prop.numeric_features], 
+        X_test[prop.categorical_features], 
+        device, 
+        y_test
     )
 
     @trans_builder.add_step(order=1)
@@ -105,19 +118,21 @@ def standard_pipeline():
 
     BATCH_SIZE = 64
     WINDOW_SIZE = 8
-    EMBED_DIM = 256
+    EMBED_DIM = 128
     NUM_HEADS = 2
-    NUM_LAYERS = 4
+    NUM_LAYERS = 2
     DROPUT = 0.1
-    DIM_FF = 128
+    DIM_FF = 64
     LR = 0.0005
     WHIGHT_DECAY = 0.001
 
-    train_sampler = samplers.RandomSlidingWindowSampler(
-        train_dataset, window_size=WINDOW_SIZE
+    train_indices = pd.read_csv(f"dataset/UGR16/fixed/ms_1_train_{WINDOW_SIZE}.csv")["index"]
+    train_sampler = samplers.FixedWindowSampler(
+        train_dataset, train_indices, window_size=WINDOW_SIZE
     )
-    test_sampler = samplers.RandomSlidingWindowSampler(
-        test_dataset, window_size=WINDOW_SIZE
+    test_indices = pd.read_csv(f"dataset/UGR16/fixed/ms_1_test_{WINDOW_SIZE}.csv")["index"]
+    test_sampler = samplers.FixedWindowSampler(
+        test_dataset, test_indices, window_size=WINDOW_SIZE
     )
 
     train_dataloader = DataLoader(
