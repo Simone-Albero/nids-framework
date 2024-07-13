@@ -5,6 +5,7 @@ from rich.logging import RichHandler
 import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader
+from sklearn.model_selection import train_test_split
 
 from data import (
     properties,
@@ -31,41 +32,51 @@ def standard_pipeline():
     named_prop = properties.NamedDatasetProperties(CONFIG_PATH)
     prop = named_prop.get_properties(DATASET_NAME)
 
-    dataset_path = "dataset/UGR16/custom/ms_train.csv"
-    df = pd.read_csv(dataset_path)
+    train_path = "dataset/UGR16/custom/ms_train.csv"
+    df = pd.read_csv(train_path)
 
-    proc = processor.Processor(df, prop)
+    df_train, df_test = train_test_split(df, test_size=0.2, random_state=42)
+
+    # test_path = "dataset/UGR16/custom/ms_test.csv"
+    # df_test = pd.read_csv(train_path, nrows=1000000)
 
     trans_builder = transformation_builder.TransformationBuilder()
     CATEGORICAL_LEV = 32
     BOUND = 1_000_000_000
 
+    min_values, max_values = utilities.min_max_values(df_train, prop, BOUND)
+    unique_values = utilities.unique_values(df_train, prop, CATEGORICAL_LEV)
+
     @trans_builder.add_step(order=1)
-    def base_pre_processing(dataset, properties, train_mask):
-        utilities.base_pre_processing(dataset, properties, train_mask, BOUND)
+    def base_pre_processing(dataset, properties):
+        utilities.base_pre_processing(dataset, properties, BOUND)
 
     @trans_builder.add_step(order=2)
-    def log_pre_processing(dataset, properties, train_mask):
-        utilities.log_pre_processing(dataset, properties, train_mask)
+    def log_pre_processing(dataset, properties):
+        utilities.log_pre_processing(dataset, properties, min_values, max_values)
 
     @trans_builder.add_step(order=3)
-    def categorical_conversion(
-        dataset, properties, train_mask, categorical_levels=CATEGORICAL_LEV
-    ):
+    def categorical_conversion(dataset, properties):
         utilities.categorical_pre_processing(
-            dataset, properties, train_mask, categorical_levels
+            dataset, properties, unique_values, CATEGORICAL_LEV
         )
 
     @trans_builder.add_step(order=4)
-    def bynary_label_conversion(dataset, properties, train_mask):
-        utilities.bynary_label_conversion(dataset, properties, train_mask)
+    def bynary_label_conversion(dataset, properties):
+        utilities.bynary_label_conversion(dataset, properties)
 
-    proc.transformations = trans_builder.build()
+    transformations = trans_builder.build()
+
+    proc = processor.Processor(df_train, prop)
+    proc.transformations = transformations
     proc.apply()
+    X_train, y_train = proc.build()
 
-    X_train, y_train = proc.get_train()
-    X_vaild, y_valid = proc.get_valid()
-    X_test, y_test = proc.get_test()
+    proc = processor.Processor(df_test, prop)
+    proc.transformations = transformations
+    proc.apply()
+    X_test, y_test = proc.build()
+
 
     device = "cpu"
     if torch.cuda.is_available():
@@ -79,12 +90,7 @@ def standard_pipeline():
         device,
         y_train,
     )
-    valid_dataset = tabular_datasets.TabularDataset(
-        X_vaild[prop.numeric_features],
-        X_vaild[prop.categorical_features],
-        device,
-        y_valid,
-    )
+
     test_dataset = tabular_datasets.TabularDataset(
         X_test[prop.numeric_features], X_test[prop.categorical_features], device, y_test
     )
@@ -95,11 +101,10 @@ def standard_pipeline():
 
     transformations = trans_builder.build()
     train_dataset.set_categorical_transformation(transformations)
-    valid_dataset.set_categorical_transformation(transformations)
     test_dataset.set_categorical_transformation(transformations)
 
     BATCH_SIZE = 64
-    WINDOW_SIZE = 512
+    WINDOW_SIZE = 8
     EMBED_DIM = 256
     NUM_HEADS = 2
     NUM_LAYERS = 4
@@ -111,9 +116,6 @@ def standard_pipeline():
     train_sampler = samplers.RandomSlidingWindowSampler(
         train_dataset, window_size=WINDOW_SIZE
     )
-    valid_sampler = samplers.RandomSlidingWindowSampler(
-        valid_dataset, window_size=WINDOW_SIZE
-    )
     test_sampler = samplers.RandomSlidingWindowSampler(
         test_dataset, window_size=WINDOW_SIZE
     )
@@ -122,13 +124,6 @@ def standard_pipeline():
         train_dataset,
         batch_size=BATCH_SIZE,
         sampler=train_sampler,
-        drop_last=True,
-        shuffle=False,
-    )
-    valid_dataloader = DataLoader(
-        valid_dataset,
-        batch_size=BATCH_SIZE,
-        sampler=valid_sampler,
         drop_last=True,
         shuffle=False,
     )
@@ -181,10 +176,6 @@ def standard_pipeline():
         n_epoch=N_EPOCH,
         train_data_loader=train_dataloader,
         epoch_steps=EPOCH_STEPS,
-        epochs_until_validation=EPOCH_UNTIL_VALIDATION,
-        valid_data_loader=valid_dataloader,
-        patience=PATIENCE,
-        delta=DELTA,
     )
 
     metric = metrics.BinaryClassificationMetric()

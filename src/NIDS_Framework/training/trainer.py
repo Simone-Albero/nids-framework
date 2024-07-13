@@ -10,7 +10,6 @@ from torch.nn.modules.loss import _Loss
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 
-from tools import hook_system
 from training import metrics
 from tools.utilities import trace_stats
 
@@ -67,20 +66,7 @@ class Trainer:
         "_criterion",
         "_optimizer",
         "_device",
-        "_hook_system",
     ]
-
-    BEFORE_TRAIN = "before_train"
-    BEFORE_EPOCH = "before_epoch"
-    BEFORE_BATCH = "before_batch"
-    BEFORE_VALIDATION = "before_validation"
-    BEFORE_TEST = "before_test"
-
-    AFTER_TRAIN = "after_train"
-    AFTER_EPOCH = "after_epoch"
-    AFTER_BATCH = "after_batch"
-    AFTER_VALIDATION = "after_validation"
-    AFTER_TEST = "after_test"
 
     def __init__(
         self, model: nn.Module, criterion: _Loss, optimizer: Optimizer, device: str, 
@@ -89,18 +75,6 @@ class Trainer:
         self._criterion: _Loss = criterion
         self._optimizer: Optimizer = optimizer
         self._device: str = device
-        self._hook_system: hook_system.HookSystem = hook_system.HookSystem()
-
-    def add_callback(self, event: str) -> Callable:
-        def decorator(func: Callable) -> Callable:
-            @functools.wraps(func)
-            def wrapper(*args, **kwargs):
-                return func(*args, **kwargs)
-
-            self._hook_system.register_hook(event, wrapper)
-            return wrapper
-
-        return decorator
 
     @trace_stats()
     def train(
@@ -114,7 +88,6 @@ class Trainer:
         delta: Optional[float] = None,
     ) -> float:
         logging.info(f"Starting {n_epoch}-epoch training loop...")
-        self._hook_system.execute_hooks(self.BEFORE_TRAIN)
 
         if patience is not None and delta is not None:
             early_stopping = EarlyStopping(patience, delta)
@@ -127,15 +100,12 @@ class Trainer:
             train_loss += epoch_loss
             logging.info(f"Epoch: {epoch} Loss: {epoch_loss:.6f}.\n")
 
-            if valid_data_loader and epochs_until_validation:
+            if valid_data_loader:
                 if (epoch + 1) % epochs_until_validation == 0:
                     validation_loss = self.validate(valid_data_loader)
                     early_stopping(validation_loss, self._model)
                     if early_stopping.early_stop:
-                        if epoch + 1 == n_epoch:
-                            logging.info(f"Early stopping in epoch: {epoch+1}")
-                        else:
-                            logging.info("Loading best model weights configuration.")
+                        logging.info(f"Early stopping in epoch: {epoch+1}")
                         self._model.load_state_dict(
                             torch.load("checkpoints/checkpoint.pt")
                         )
@@ -146,13 +116,11 @@ class Trainer:
         train_loss /= epoch + 1
         logging.info("Done with training.")
         logging.info(f"Trained for {epoch + 1} epochs with loss: {train_loss:.6f}.\n")
-        self._hook_system.execute_hooks(self.AFTER_TRAIN)
         return train_loss
 
     def train_one_epoch(
         self, data_loader: DataLoader, epoch_steps: Optional[int] = None
     ) -> float:
-        self._hook_system.execute_hooks(self.BEFORE_EPOCH)
         epoch_loss = 0.0
 
         if epoch_steps is None:
@@ -170,11 +138,9 @@ class Trainer:
                 epoch_loss += self._train_one_batch(batch)
             epoch_loss /= epoch_steps
 
-        self._hook_system.execute_hooks(self.AFTER_EPOCH)
         return epoch_loss
 
     def _train_one_batch(self, batch: Tuple[torch.Tensor, torch.Tensor]) -> float:
-        self._hook_system.execute_hooks(self.BEFORE_BATCH)
         inputs, labels = batch
 
         self._optimizer.zero_grad()
@@ -183,12 +149,10 @@ class Trainer:
         loss.backward()
         self._optimizer.step()
 
-        self._hook_system.execute_hooks(self.AFTER_BATCH)
         return loss.item()
 
     def validate(self, data_loader: DataLoader) -> float:
         logging.info("Starting validation loop...")
-        self._hook_system.execute_hooks(self.BEFORE_VALIDATION)
         validation_loss = 0.0
         
         self._model.eval()
@@ -202,7 +166,6 @@ class Trainer:
 
         logging.info("Done with validation.")
         logging.info(f"Validation loss: {validation_loss:.6f}.\n")
-        self._hook_system.execute_hooks(self.AFTER_VALIDATION)
         return validation_loss
 
     @trace_stats()
@@ -210,7 +173,6 @@ class Trainer:
         if metric is None:
             raise ValueError("Please provide metic before testing.")
         logging.info(f"Starting test loop...")
-        self._hook_system.execute_hooks(self.BEFORE_TEST)
 
         self._model.eval()
         with torch.no_grad():
@@ -222,7 +184,6 @@ class Trainer:
         logging.info("Done with testing.")
         logging.info(f"{metric}\n")
         metric.save()
-        self._hook_system.execute_hooks(self.AFTER_TEST)
 
     def save_model(self, path: Optional[str] = "saves/model.pt") -> None:
         logging.info("Saving model weights...")

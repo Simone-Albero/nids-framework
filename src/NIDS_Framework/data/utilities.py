@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, List, Tuple, Optional
 import logging
 
 import pandas as pd
@@ -7,32 +7,55 @@ import torch
 
 from data.processor import DatasetProperties
 
+def min_max_values(dataset: pd.DataFrame, properties: DatasetProperties, bound: Optional[int] = np.inf) -> Tuple[Dict[str,float], Dict[str,float]]:
+    min_values = {}
+    max_values = {}
+    
+    for col in properties.numeric_features:
+        column_values = dataset[col].values
+        min_value = np.min(column_values)
+        max_value = np.max(column_values)
+
+        min_values[col] = max(min_value, -bound)
+        max_values[col] = min(max_value, bound)
+
+    return min_values, max_values
+
+
+def unique_values(dataset: pd.DataFrame, properties: DatasetProperties, categorical_levels: int) -> Dict[str,List[Any]]:
+    unique_values = {}
+
+    for col in properties.categorical_features:
+        uniques = dataset[col].value_counts().index[: (categorical_levels - 1)].tolist()
+        unique_values[col] = uniques
+
+    return unique_values
+    
+
 def base_pre_processing(
     dataset: pd.DataFrame,
     properties: DatasetProperties,
-    train_mask: pd.Series,
     bound: int,
 ) -> None:
     logging.debug(f"Bounding numeric features to {bound}...")
     for col in properties.numeric_features:
         column_values = dataset[col].values
         column_values[~np.isfinite(column_values)] = 0
-        column_values[column_values < -bound] = 0
-        column_values[column_values > bound] = 0
+        column_values[column_values < -bound] = -bound
+        column_values[column_values > bound] = bound
         dataset[col] = column_values.astype("float32")
 
 
 def log_pre_processing(
     dataset: pd.DataFrame,
     properties: DatasetProperties,
-    train_mask: pd.Series,
+    min_values: Dict[str, float],
+    max_values: Dict[str, float],
 ) -> None:
     logging.debug("Normalizing numeric features with Log...")
     for col in properties.numeric_features:
         column_values = dataset[col].values
-        train_values = dataset[train_mask][col].values
-        min_value = np.min(train_values)
-        max_value = np.max(train_values)
+        min_value , max_value = min_values[col], max_values[col]
         gap = max_value - min_value
 
         if gap == 0:
@@ -47,7 +70,7 @@ def log_pre_processing(
 def categorical_pre_processing(
     dataset: pd.DataFrame,
     properties: DatasetProperties,
-    train_mask: pd.Series,
+    unique_values: Dict[str, List[Any]],
     categorical_levels: int,
 ) -> None:
     logging.debug(
@@ -55,37 +78,14 @@ def categorical_pre_processing(
     )
 
     for col in properties.categorical_features:
-        unique_values = (
-            dataset[train_mask][col].value_counts().index[: (categorical_levels - 1)]
-        )
-        value_map = {val: idx for idx, val in enumerate(unique_values)}
+        value_map = {val: idx for idx, val in enumerate(unique_values[col])}
 
         dataset[col] = dataset[col].apply(lambda x: value_map.get(x, -1) + 1)
-
-
-def multi_class_label_conversion(
-    dataset: pd.DataFrame,
-    properties: DatasetProperties,
-    train_mask: pd.Series,
-) -> Dict[int, Any]:
-    logging.debug("Mapping class labels to numeric values...")
-    mapping = {}
-    reverse = {}
-
-    for idx, label in enumerate(dataset[properties.labels].unique()):
-        mapping[label] = idx
-        reverse[idx] = label
-
-    dataset[properties.labels] = dataset[properties.labels].apply(
-        lambda x: mapping.get(x)
-    )
-    return reverse
 
 
 def bynary_label_conversion(
     dataset: pd.DataFrame,
     properties: DatasetProperties,
-    train_mask: pd.Series,
 ) -> None:
     logging.debug("Mapping class labels to numeric values...")
     dataset[properties.labels] = ~(

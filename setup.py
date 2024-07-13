@@ -14,7 +14,8 @@ setup(
         'tqdm',
         'psutil',
         'rich',
-        'matplotlib'
+        'matplotlib', 
+        'scikit-learn'
     ],
     author='Simone Albero',
     author_email='sim.albero@stud.uniroma3.it',
