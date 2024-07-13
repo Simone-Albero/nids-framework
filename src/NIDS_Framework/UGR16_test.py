@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import random
+import numpy as np
 
 def ms_stamp_update():
     dataset_path = "dataset/UGR16/custom/fixed_test.csv"
@@ -74,25 +75,60 @@ def fixed_windows_dataset():
 
     WINDOW_SIZE_MS = pd.Timedelta(milliseconds=10)
     MAX_WINDOW = 64
-    MIN_WINDOW = 2
 
     dfs = {2: [], 4: [], 8: [], 16: [], 32: [], 64: []}
 
-    for i in tqdm(range(len(df))):
-        curr_stamp = df.iloc[i]['te']
-        window_end_time = curr_stamp + WINDOW_SIZE_MS
+    window_end_times = df['te'] + WINDOW_SIZE_MS
 
-        for window_size in dfs.keys():            
-            if i + window_size - 1 < len(df) and df.iloc[i + window_size - 1]['te'] <= window_end_time:
-                dfs[window_size].append(i + window_size - 1)
-            else:
-                break
+    for window_size in tqdm(dfs.keys()):
+        valid_indices = np.where((df['te'].shift(-window_size + 1) <= window_end_times)[:len(df) - window_size + 1])[0] + window_size - 1
+        dfs[window_size].extend(valid_indices)
 
     for window_size, df_list in dfs.items():
         if df_list:
             indices_df = pd.DataFrame(df_list, columns=['index'])
             indices_df.to_csv(f"dataset/UGR16/fixed/{window_size}.csv", index=False)
-            print(f"{window_size}: {len(df_list)}")    
+            print(f"{window_size}: {len(df_list)}")   
+
+def avg_durations():
+    dataset_path = "dataset/UGR16/custom/ms_train.csv"
+    df = pd.read_csv(dataset_path)
+    df['te'] = pd.to_datetime(df['te'])
+
+    TOLERANCE = 0.1
+
+    duration_occurrences = {}
+
+    for duration in tqdm(df['td']):
+        found = False
+
+        for key in duration_occurrences.keys():
+            if abs(key - duration) <= duration * TOLERANCE:
+                duration_occurrences[key] += 1
+                found = True
+                break
+
+        if not found:
+            duration_occurrences[duration] = 1
+
+    with open('plots/duration_occurrences.pkl', 'wb') as file:
+        pickle.dump(duration_occurrences, file)
+
+    xs = sorted(duration_occurrences.keys())[:100]
+    ys = [duration_occurrences[x] for x in xs]
+    indices = list(range(len(xs)))
+
+    plt.figure(figsize=(20, 10))
+    plt.bar(indices, ys)
+    plt.xlabel('Duration')
+    plt.ylabel('Occurrences')
+    plt.title('Distribution of Duration')
+    plt.xticks(indices, xs, rotation=90)
+    plt.tight_layout()
+
+    plt.savefig('saves/duration_occurrences.png', bbox_inches='tight')
+    plt.show()
+
 
 
 def main():
@@ -102,7 +138,7 @@ def main():
         format="%(message)s",
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
-    fixed_windows_dataset()
+    avg_durations()
 
 
 if __name__ == "__main__":
