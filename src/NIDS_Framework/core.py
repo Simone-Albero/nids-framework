@@ -53,9 +53,11 @@ def standard_pipeline(WINDOW_SIZE):
     named_prop = properties.NamedDatasetProperties(CONFIG_PATH)
     prop = named_prop.get_properties(DATASET_NAME)
 
-    df_path = "dataset/UGR16/ms_1.csv"
-    df = pd.read_csv(df_path)
-    df_train, df_test = train_test_split(df, test_size=0.3, random_state=42)
+    tain_path = "dataset/UGR16/ms_1.csv"
+    df_train = pd.read_csv(tain_path)
+
+    test_path = "dataset/UGR16/ms_1.csv"
+    df_test = pd.read_csv(test_path)
 
     trans_builder = transformation_builder.TransformationBuilder()
 
@@ -185,13 +187,12 @@ def standard_pipeline(WINDOW_SIZE):
 def generate_train_test():
     df_path = "dataset/UGR16/ms_1.csv"
     df = pd.read_csv(df_path)
+    train_size = int(len(df) * 0.7)
+    test_size = len(df) - train_size
+    print(train_size, test_size)
 
-    df_train, df_test = train_test_split(df, test_size=0.3, random_state=42)
-
-    df_train['te'] = pd.to_datetime(df_train['te'])
-    df_train = df_train.sort_values(by='te')
-    df_test['te'] = pd.to_datetime(df_test['te'])
-    df_test = df_test.sort_values(by='te')
+    df_train = df.head(train_size)
+    df_test = df.tail(test_size)
 
     df_train.to_csv("dataset/UGR16/custom/ms_1_train.csv", index=False)
     df_test.to_csv("dataset/UGR16/custom/ms_1_test.csv", index=False)
@@ -468,10 +469,29 @@ def fragmented_dataset_test(WINDOW_SIZE):
 
     train = trainer.Trainer(model)
     train.load_model(f"saves/f{WINDOW_SIZE}.pt")
-    
+
     metric = metrics.BinaryClassificationMetric()
     train.test(test_dataloader, metric)
 
+def stats_aggragation():
+    metrics_path = "logs/metrics.csv"
+    log_path = "logs/log.csv"
+
+    metrics = pd.read_csv(metrics_path)
+    log = pd.read_csv(log_path)
+
+    TP = metrics["TP"].sum()
+    TN = metrics["TN"].sum()
+    FP = metrics["FP"].sum()
+    FN = metrics["FN"].sum()
+
+    precision = TP / (TP + FP + 1e-12)
+    recall = TP / (TP + FN + 1e-12)
+    F1 = 2 * (precision * recall) / (precision + recall + 1e-12)
+
+    inference_time = (log["EXEC_TIME"].sum())/60
+
+    logging.info(f"Aggregated Stats: \nPrecision: {precision}\nRecall: {recall}\nF1 Sconre: {F1}\nTP: {TP}\nTN: {TN}\nFP: {FP}\nFN: {FN}\nInference Time (min): {inference_time}")
 
 def main():
     debug_level = logging.INFO
@@ -481,10 +501,14 @@ def main():
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
     
-    for window_size in [2,4,8,16,32,64]:
-        # fixed_pipeline(window_size)
-        # standard_pipeline(window_size)
-        fragmented_dataset_test(window_size)
+    generate_train_test()
+
+    #stats_aggragation()
+    
+    # for window_size in [2,4,8,16,32,64]:
+    #     fixed_pipeline(window_size)
+    #     standard_pipeline(window_size)
+        #fragmented_dataset_test(window_size)
 
 
 if __name__ == "__main__":

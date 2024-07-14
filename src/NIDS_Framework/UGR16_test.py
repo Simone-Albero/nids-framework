@@ -86,11 +86,10 @@ def fixed_windows_dataset():
         dfs[window_size] = valid_indices.tolist()
 
     for window_size, df_list in dfs.items():
-        print(f"{window_size}: {len(df_list)}")
-        # if df_list:
-        #     indices_df = pd.DataFrame(df_list, columns=['index'])
-        #     indices_df.to_csv(f"dataset/UGR16/fixed/{DATASET_NAME}_{window_size}.csv", index=False)
-        #     print(f"{window_size}: {len(df_list)}")   
+        if df_list:
+            indices_df = pd.DataFrame(df_list, columns=['index'])
+            indices_df.to_csv(f"dataset/UGR16/fixed/{DATASET_NAME}_{window_size}.csv", index=False)
+            print(f"{window_size}: {len(df_list)}")   
 
 def avg_durations():
     dataset_path = "dataset/UGR16/custom/ms_train.csv"
@@ -170,6 +169,7 @@ def main():
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
     fixed_windows_dataset()
+    fragmented_test_set()
 
 
 if __name__ == "__main__":
