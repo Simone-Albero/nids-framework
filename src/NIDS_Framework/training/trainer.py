@@ -65,16 +65,14 @@ class Trainer:
         "_model",
         "_criterion",
         "_optimizer",
-        "_device",
     ]
 
     def __init__(
-        self, model: nn.Module, criterion: _Loss, optimizer: Optimizer, device: str, 
+        self, model: nn.Module, criterion: Optional[_Loss] = None, optimizer: Optional[Optimizer] = None 
     ) -> None:
         self._model: nn.Module = model
         self._criterion: _Loss = criterion
         self._optimizer: Optimizer = optimizer
-        self._device: str = device
 
     @trace_stats()
     def train(

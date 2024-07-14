@@ -79,17 +79,18 @@ def fixed_windows_dataset():
 
     dfs = {2: [], 4: [], 8: [], 16: [], 32: [], 64: []}
 
-    window_end_times = df['te'] + WINDOW_SIZE_MS
+    end_stamps = df['te'] + WINDOW_SIZE_MS
 
     for window_size in tqdm(dfs.keys()):
-        valid_indices = np.where((df['te'].shift(-window_size + 1) <= window_end_times)[:len(df) - window_size + 1])[0] + window_size - 1
+        valid_indices = np.where((df['te'].shift(-window_size + 1) <= end_stamps)[:len(df) - window_size + 1])[0] + window_size - 1
         dfs[window_size] = valid_indices.tolist()
 
     for window_size, df_list in dfs.items():
-        if df_list:
-            indices_df = pd.DataFrame(df_list, columns=['index'])
-            indices_df.to_csv(f"dataset/UGR16/fixed/{DATASET_NAME}_{window_size}.csv", index=False)
-            print(f"{window_size}: {len(df_list)}")   
+        print(f"{window_size}: {len(df_list)}")
+        # if df_list:
+        #     indices_df = pd.DataFrame(df_list, columns=['index'])
+        #     indices_df.to_csv(f"dataset/UGR16/fixed/{DATASET_NAME}_{window_size}.csv", index=False)
+        #     print(f"{window_size}: {len(df_list)}")   
 
 def avg_durations():
     dataset_path = "dataset/UGR16/custom/ms_train.csv"
@@ -129,6 +130,35 @@ def avg_durations():
 
     plt.savefig('plots/duration_occurrences.png', bbox_inches='tight')
     plt.show()
+
+def fragmented_test_set():
+    DATASET_NAME = "ms_1_test"
+    dataset_path = "dataset/UGR16/custom/" + DATASET_NAME + ".csv"
+    df = pd.read_csv(dataset_path)
+    df['te'] = pd.to_datetime(df['te'])
+
+    WINDOW_SIZE_MS = pd.Timedelta(milliseconds=10)
+    MAX_WINDOW = 64
+
+    dfs = {2: [], 4: [], 8: [], 16: [], 32: [], 64: []}
+
+    end_stamps = df['te'] + WINDOW_SIZE_MS
+    assigned_indices = pd.Series(False, index=df.index)
+
+    for window_size in tqdm([64, 32, 16, 8, 4, 2]):
+        valid_indices = np.where((df['te'].shift(-window_size + 1) <= end_stamps)[:len(df) - window_size + 1])[0] + window_size - 1
+
+        valid_indices = valid_indices[~assigned_indices.loc[valid_indices]]
+        dfs[window_size] = valid_indices.tolist()
+
+        for idx in valid_indices:
+            assigned_indices.iloc[idx - window_size + 1:idx + 1] = True
+
+    for window_size, df_list in dfs.items():
+        if df_list:
+            indices_df = pd.DataFrame(df_list, columns=['index'])
+            indices_df.to_csv(f"dataset/UGR16/fragmented/{DATASET_NAME}_{window_size}.csv", index=False)
+            print(f"{window_size}: {len(df_list)}")  
 
 
 
