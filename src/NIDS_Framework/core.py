@@ -35,16 +35,16 @@ def standard_pipeline(WINDOW_SIZE):
 
     BATCH_SIZE = 64
     #WINDOW_SIZE = 8
-    EMBED_DIM = 128
+    EMBED_DIM = 256
     NUM_HEADS = 2
-    NUM_LAYERS = 2
+    NUM_LAYERS = 4
     DROPUT = 0.1
-    DIM_FF = 64
+    DIM_FF = 128
     LR = 0.0005
     WHIGHT_DECAY = 0.001
 
     N_EPOCH = 1
-    EPOCH_STEPS = 6000
+    EPOCH_STEPS = 10000
     EPOCH_UNTIL_VALIDATION = 100
     PATIENCE = 2
     DELTA = 0.01
@@ -53,10 +53,10 @@ def standard_pipeline(WINDOW_SIZE):
     named_prop = properties.NamedDatasetProperties(CONFIG_PATH)
     prop = named_prop.get_properties(DATASET_NAME)
 
-    tain_path = "dataset/UGR16/ms_1.csv"
+    tain_path = "dataset/UGR16/custom/ms_1_train.csv"
     df_train = pd.read_csv(tain_path)
 
-    test_path = "dataset/UGR16/ms_1.csv"
+    test_path = "dataset/UGR16/custom/ms_1_test.csv"
     df_test = pd.read_csv(test_path)
 
     trans_builder = transformation_builder.TransformationBuilder()
@@ -185,14 +185,18 @@ def standard_pipeline(WINDOW_SIZE):
     train.test(test_dataloader, metric)
 
 def generate_train_test():
-    df_path = "dataset/UGR16/ms_1.csv"
-    df = pd.read_csv(df_path)
-    train_size = int(len(df) * 0.7)
-    test_size = len(df) - train_size
+    df1_path = "dataset/UGR16/ms_1.csv"
+    df1 = pd.read_csv(df1_path)
+
+    df2_path = "dataset/UGR16/ms_1.csv"
+    df2 = pd.read_csv(df2_path)
+
+    train_size = int(len(df1) * 0.7)
+    test_size = len(df1) - train_size
     print(train_size, test_size)
 
-    df_train = df.head(train_size)
-    df_test = df.tail(test_size)
+    df_train = df1.tail(train_size)
+    df_test = df2.head(test_size)
 
     df_train.to_csv("dataset/UGR16/custom/ms_1_train.csv", index=False)
     df_test.to_csv("dataset/UGR16/custom/ms_1_test.csv", index=False)
@@ -206,16 +210,16 @@ def fixed_pipeline(WINDOW_SIZE):
 
     BATCH_SIZE = 64
     #WINDOW_SIZE = 8
-    EMBED_DIM = 128
+    EMBED_DIM = 256
     NUM_HEADS = 2
-    NUM_LAYERS = 2
+    NUM_LAYERS = 4
     DROPUT = 0.1
-    DIM_FF = 64
+    DIM_FF = 128
     LR = 0.0005
     WHIGHT_DECAY = 0.001
 
     N_EPOCH = 1
-    EPOCH_STEPS = 6000
+    EPOCH_STEPS = 10000
     EPOCH_UNTIL_VALIDATION = 100
     PATIENCE = 2
     DELTA = 0.01
@@ -365,16 +369,16 @@ def fragmented_dataset_test(WINDOW_SIZE):
 
     BATCH_SIZE = 64
     #WINDOW_SIZE = 8
-    EMBED_DIM = 128
+    EMBED_DIM = 256
     NUM_HEADS = 2
-    NUM_LAYERS = 2
+    NUM_LAYERS = 4
     DROPUT = 0.1
-    DIM_FF = 64
+    DIM_FF = 128
     LR = 0.0005
     WHIGHT_DECAY = 0.001
 
     N_EPOCH = 1
-    EPOCH_STEPS = 6000
+    EPOCH_STEPS = 10000
     EPOCH_UNTIL_VALIDATION = 100
     PATIENCE = 2
     DELTA = 0.01
@@ -501,14 +505,14 @@ def main():
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
     
-    generate_train_test()
+    #generate_train_test()
 
-    #stats_aggragation()
+    for window_size in [2,4,8,16,32,64]:
+        fixed_pipeline(window_size)
+   #     standard_pipeline(window_size)
     
-    # for window_size in [2,4,8,16,32,64]:
-    #     fixed_pipeline(window_size)
-    #     standard_pipeline(window_size)
-        #fragmented_dataset_test(window_size)
+    #fragmented_dataset_test(window_size)
+    #stats_aggragation()
 
 
 if __name__ == "__main__":

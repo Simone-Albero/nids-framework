@@ -168,7 +168,7 @@ def main():
         format="%(message)s",
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
-    fixed_windows_dataset()
+    #fixed_windows_dataset()
     fragmented_test_set()
 
 
