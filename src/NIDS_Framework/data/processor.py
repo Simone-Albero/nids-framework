@@ -1,11 +1,10 @@
-from typing import List, Optional, Callable, Dict, Any, Tuple
+from typing import List, Callable, Tuple
 import logging
 
 import pandas as pd
-import numpy as np
-from numpy.typing import NDArray
 
 from data.properties import DatasetProperties
+
 
 class Processor:
 
@@ -44,4 +43,3 @@ class Processor:
 
     def build(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
         return self._df[self._properties.features], self._df[self._properties.labels]
-

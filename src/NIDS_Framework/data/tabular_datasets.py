@@ -15,15 +15,17 @@ class TabularDataset(Dataset):
         labels: Optional[pd.DataFrame] = None,
     ) -> None:
         super().__init__()
-        self.numeric_data = torch.tensor(numeric_data.values, dtype=torch.float32).to(
-            device=device
+        self.numeric_data = torch.tensor(
+            numeric_data.values, dtype=torch.float32, device=device
         )
+
         self.categorical_data = torch.tensor(
-            categorical_data.values, dtype=torch.long
-        ).to(device=device)
+            categorical_data.values, dtype=torch.long, device=device
+        )
+
         if labels is not None:
-            self.labels = torch.tensor(labels.values, dtype=torch.float32).to(
-                device=device
+            self.labels = torch.tensor(
+                labels.values, dtype=torch.float32, device=device
             )
         else:
             self.labels = None

@@ -1,9 +1,9 @@
-from typing import Tuple, Optional, Callable
+from typing import Tuple, Optional
 import logging
-from tqdm import tqdm
-import functools
+import os
 
 import numpy as np
+from tqdm import tqdm
 import torch
 from torch import nn
 from torch.nn.modules.loss import _Loss
@@ -51,11 +51,21 @@ class EarlyStopping:
             self.save_checkpoint(val_loss, model)
             self.counter = 0
 
-    def save_checkpoint(self, val_loss: float, model: nn.Module):
+    def save_checkpoint(
+        self,
+        val_loss: float,
+        model: nn.Module,
+        f_path: Optional[str] = "checkpoints/checkpoint.pt",
+    ):
         logging.info(
             f"Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}). Saving model ..."
         )
-        torch.save(model.state_dict(), "checkpoints/checkpoint.pt")
+
+        dir_name = os.path.dirname(f_path)
+        if not os.path.exists(dir_name):
+            os.makedirs(dir_name)
+
+        torch.save(model.state_dict(), f_path)
         self.val_loss_min = val_loss
 
 
@@ -68,7 +78,10 @@ class Trainer:
     ]
 
     def __init__(
-        self, model: nn.Module, criterion: Optional[_Loss] = None, optimizer: Optional[Optimizer] = None 
+        self,
+        model: nn.Module,
+        criterion: Optional[_Loss] = None,
+        optimizer: Optional[Optimizer] = None,
     ) -> None:
         self._model: nn.Module = model
         self._criterion: _Loss = criterion
@@ -152,7 +165,7 @@ class Trainer:
     def validate(self, data_loader: DataLoader) -> float:
         logging.info("Starting validation loop...")
         validation_loss = 0.0
-        
+
         self._model.eval()
         with torch.no_grad():
             for inputs, labels in tqdm(data_loader, desc="Validating"):
@@ -183,12 +196,17 @@ class Trainer:
         logging.info(f"{metric}\n")
         metric.save()
 
-    def save_model(self, path: Optional[str] = "saves/model.pt") -> None:
+    def save_model(self, f_path: Optional[str] = "saves/model.pt") -> None:
         logging.info("Saving model weights...")
-        torch.save(self._model.state_dict(), path)
+
+        dir_name = os.path.dirname(f_path)
+        if not os.path.exists(dir_name):
+            os.makedirs(dir_name)
+
+        torch.save(self._model.state_dict(), f_path)
         logging.info("Done")
 
-    def load_model(self, path: Optional[str] = "saves/model.pt") -> None:
+    def load_model(self, f_path: Optional[str] = "saves/model.pt") -> None:
         logging.info("Loading model weights...")
-        self._model.load_state_dict(torch.load(path))
+        self._model.load_state_dict(torch.load(f_path))
         logging.info("Done")

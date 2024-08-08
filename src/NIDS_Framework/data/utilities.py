@@ -62,6 +62,7 @@ def log_pre_processing(
             dataset[col] = np.zeros_like(column_values, dtype="float32")
         else:
             column_values -= min_value
+            column_values = np.maximum(column_values, 0) # maybe not fair
             column_values = np.log(column_values + 1)
             column_values *= 1.0 / np.log(gap + 1)
             dataset[col] = column_values
@@ -103,28 +104,31 @@ def one_hot_encoding(sample: Dict[str, Any], levels: int) -> Dict[str, Any]:
 
     return sample
 
-def log_transformation(sample: Dict[str, Any], min_values: pd.Series, max_values: pd.Series) -> Dict[str, Any]:
+def log_transformation(sample: Dict[str, Any], min_values: torch.Tensor, max_values: torch.Tensor) -> Dict[str, Any]:
     features = sample["data"]
     gaps = max_values - min_values
 
     mask = gaps != 0
-    features = torch.where(
-        mask, torch.log(features + 1) / torch.log(gaps + 1), torch.zeros_like(features)
-    )
-    features = torch.where(mask, features, torch.zeros_like(features))
-    sample["data"] = features
+
+    features_transformed = torch.zeros_like(features)
+    features_transformed[mask] = torch.log(features[mask] + 1) / torch.log(gaps[mask] + 1)
+
+    sample["data"] = features_transformed
     return sample
 
-def categorical_value_encoding(sample: Dict[str, Any], categorical_levels: pd.DataFrame, categorical_bound: int) -> Dict[str, Any]:
+def categorical_value_encoding(sample: Dict[str, Any], categorical_levels: torch.Tensor, categorical_bound: int) -> Dict[str, Any]:
     features = sample["data"]
     categorical_levels = categorical_levels[:, :(categorical_bound - 1)]
 
-    value_encoding = torch.zeros_like(features)
-    for col_idx, col in enumerate(features.t()):
-        for row_idx, val in enumerate(col):
-            mask = (categorical_levels[:, col_idx] == val).nonzero()
-            if mask.numel() > 0:
-                value_encoding[row_idx, col_idx] = mask.item() + 1
+
+    value_encoding = torch.zeros_like(features, dtype=torch.long)
+    for col_idx in range(features.size(1)):
+        col_values = features[:, col_idx].unsqueeze(1)  # Shape (N, 1)
+        cat_col_levels = categorical_levels[:, col_idx].unsqueeze(0)  # Shape (1, L)
+        mask = col_values == cat_col_levels  # Shape (N, L)
+
+        encoded_indices = mask.nonzero(as_tuple=True)[1].reshape(-1, features.size(0)).t() + 1
+        value_encoding[:, col_idx] = encoded_indices.squeeze()
 
     sample["data"] = value_encoding
     return sample

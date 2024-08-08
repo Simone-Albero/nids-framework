@@ -10,9 +10,9 @@ import psutil
 
 def collect_stats(
     pid: int,
-    stop_event: multiprocessing.Event,
+    stop_event: multiprocessing.synchronize.Event,
     interval: float,
-    stats_queue: multiprocessing.Queue,
+    stats_queue: multiprocessing.queues.Queue,
 ) -> None:
     process = psutil.Process(pid)
     global_cpu_usages = []
@@ -44,7 +44,9 @@ def collect_stats(
 
 
 def trace_stats(
-    interval: Optional[float] = 5, file_path: Optional[str] = "logs/log.csv", reset_logs: Optional[bool] = False
+    interval: Optional[float] = 5,
+    file_path: Optional[str] = "logs/stats.csv",
+    reset_logs: Optional[bool] = False,
 ) -> Callable:
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
@@ -91,4 +93,5 @@ def trace_stats(
                     )
 
         return wrapper
+
     return decorator
