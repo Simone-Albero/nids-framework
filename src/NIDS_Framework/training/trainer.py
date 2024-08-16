@@ -191,7 +191,7 @@ class Trainer:
                 outputs = self._model(inputs)
                 metric.step(outputs, labels)
 
-        metric.apply()
+        metric.compute_metrics()
         logging.info("Done with testing.")
         logging.info(f"{metric}\n")
         metric.save()

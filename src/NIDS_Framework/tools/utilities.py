@@ -1,3 +1,5 @@
+import multiprocessing.queues
+import multiprocessing.synchronize
 from typing import Callable, Optional
 import time
 import multiprocessing

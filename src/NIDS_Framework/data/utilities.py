@@ -30,7 +30,17 @@ def unique_values(dataset: pd.DataFrame, properties: DatasetProperties, categori
         unique_values[col] = uniques
 
     return unique_values
-    
+
+def labels_mapping(dataset: pd.DataFrame, properties: DatasetProperties) -> Tuple[Dict[Any, int], Dict[int, Any]]:
+    logging.debug("Mapping class labels to numeric values...")
+    mapping = {}
+    reverse = {}
+
+    for idx, label in enumerate(dataset[properties.labels].unique()):
+        mapping[label] = idx
+        reverse[idx] = label
+
+    return mapping, reverse
 
 def base_pre_processing(
     dataset: pd.DataFrame,
@@ -88,10 +98,18 @@ def bynary_label_conversion(
     dataset: pd.DataFrame,
     properties: DatasetProperties,
 ) -> None:
-    logging.debug("Mapping class labels to numeric values...")
+    logging.debug("Converting class labels to numeric values...")
     dataset[properties.labels] = ~(
         dataset[properties.labels].astype("str") == str(properties.benign_label)
     )
+
+def multi_class_label_conversion(
+    dataset: pd.DataFrame,
+    properties: DatasetProperties,
+    mapping: Dict[Any, int],
+) -> None:
+    logging.debug("Converting class labels to numeric values...")
+    dataset[properties.labels] = dataset[properties.labels].apply(lambda x: mapping.get(x))
 
 def one_hot_encoding(sample: Dict[str, Any], levels: int) -> Dict[str, Any]:
     features = sample["data"]
