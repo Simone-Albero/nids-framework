@@ -27,7 +27,7 @@ from training import (
 
 def multiclass_classification():
     CONFIG_PATH = "configs/dataset_properties.ini"
-    DATASET_NAME = "nf_ton_iot_v2_multiclass"
+    DATASET_NAME = "nf_ton_iot_v2_anonymous"
     TRAIN_PATH = "dataset/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
     TEST_PATH = "dataset/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
 
@@ -45,7 +45,7 @@ def multiclass_classification():
     WHIGHT_DECAY = 0.001
 
     N_EPOCH = 1
-    EPOCH_STEPS = 500
+    EPOCH_STEPS = 2000
     # EPOCH_UNTIL_VALIDATION = 100
     # PATIENCE = 2
     # DELTA = 0.01
@@ -54,7 +54,7 @@ def multiclass_classification():
     prop = named_prop.get_properties(DATASET_NAME)
 
     df_train = pd.read_csv(TRAIN_PATH)
-    df_test = pd.read_csv(TEST_PATH, nrows=10000)
+    df_test = pd.read_csv(TEST_PATH)
 
     trans_builder = transformation_builder.TransformationBuilder()
 
@@ -122,11 +122,18 @@ def multiclass_classification():
     train_dataset.set_categorical_transformation(transformations)
     test_dataset.set_categorical_transformation(transformations)
 
-    train_sampler = samplers.RandomSlidingWindowSampler(
-        train_dataset, window_size=WINDOW_SIZE
+    # train_sampler = samplers.RandomSlidingWindowSampler(
+    #     train_dataset, window_size=WINDOW_SIZE
+    # )
+    # test_sampler = samplers.RandomSlidingWindowSampler(
+    #     test_dataset, window_size=WINDOW_SIZE
+    # )
+
+    train_sampler = samplers.GroupWindowSampler(
+        train_dataset, WINDOW_SIZE, df_train, "IPV4_SRC_ADDR"
     )
-    test_sampler = samplers.RandomSlidingWindowSampler(
-        test_dataset, window_size=WINDOW_SIZE
+    test_sampler = samplers.GroupWindowSampler(
+        test_dataset, WINDOW_SIZE, df_test, "IPV4_SRC_ADDR"
     )
 
     train_dataloader = DataLoader(
@@ -355,17 +362,17 @@ def generate_train_test():
     df_test.to_csv("dataset/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv", index=False)
 
 def main():
-    debug_level = logging.INFO
-    logging.basicConfig(
-        level=debug_level,
-        format="%(message)s",
-        handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
-    )
-    
     # generate_train_test()
     # binary_classification()
     multiclass_classification()
 
 
 if __name__ == "__main__":
+    debug_level = logging.INFO
+    logging.basicConfig(
+        level=debug_level,
+        format="%(message)s",
+        handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
+    )
+
     main()
