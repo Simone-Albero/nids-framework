@@ -17,14 +17,16 @@ class Metric:
         self._confusion_matrix: NDArray = np.zeros((n_classes, n_classes), dtype=int)
         self._n_classes: int = n_classes
 
-    def step(self, y: torch.Tensor, y_true: torch.Tensor) -> None:
-        y_pred = torch.argmax(y, dim=1)
+    def update(self, y_pred: torch.Tensor, y_true: torch.Tensor) -> None:
         batch_confusion_matrix = confusion_matrix(
             y_true.cpu().numpy(),
             y_pred.cpu().numpy(),
             labels=np.arange(self._n_classes),
         )
         self._confusion_matrix += batch_confusion_matrix
+    
+    def step(self, y: torch.Tensor, y_true: torch.Tensor) -> None:
+        pass
 
     def compute_metrics(self) -> None:
         pass
@@ -56,13 +58,19 @@ class BinaryClassificationMetric(Metric):
         "precision",
         "recall",
         "f1",
+        "_threshold",
     ]
 
-    def __init__(self) -> None:
+    def __init__(self, threshold: Optional[float] = 0.5) -> None:
         super().__init__(n_classes=2)
         self.precision: float = 0.0
         self.recall: float = 0.0
         self.f1: float = 0.0
+        self._threshold: float = threshold
+
+    def step(self, y: torch.Tensor, y_true: torch.Tensor) -> None:
+        y_pred = y >= self._threshold
+        self.update(y_pred, y_true)
 
     def compute_metrics(self) -> None:
         TP = self._confusion_matrix[1, 1]
@@ -121,6 +129,10 @@ class MulticlassClassificationMetric(Metric):
         self.weighted_precision: float = 0.0
         self.weighted_recall: float = 0.0
         self.weighted_f1: float = 0.0
+    
+    def step(self, y: torch.Tensor, y_true: torch.Tensor) -> None:
+        y_pred = torch.argmax(y, dim=1)
+        self.update(y_pred, y_true)
 
     def compute_metrics(self) -> None:
         TP = np.diag(self._confusion_matrix)

@@ -87,7 +87,7 @@ class Trainer:
         self._criterion: _Loss = criterion
         self._optimizer: Optimizer = optimizer
 
-    @trace_stats()
+    #@trace_stats()
     def train(
         self,
         n_epoch: int,
@@ -179,7 +179,7 @@ class Trainer:
         logging.info(f"Validation loss: {validation_loss:.6f}.\n")
         return validation_loss
 
-    @trace_stats()
+    #@trace_stats()
     def test(self, data_loader: DataLoader, metric: metrics.Metric) -> None:
         if metric is None:
             raise ValueError("Please provide metic before testing.")
