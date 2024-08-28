@@ -14,12 +14,8 @@ from data import (
     samplers,
     tabular_datasets,
 )
-from model import (
-    nn_classifier,
-    input_encoder,
-    transformer,
-    classification_head,
-)
+from model import transformer
+
 from training import (
     trainer,
     metrics,
@@ -40,12 +36,12 @@ def multiclass_classification():
     NUM_HEADS = 2
     NUM_LAYERS = 4
     DROPUT = 0.1
-    DIM_FF = 128
+    FF_DIM = 128
     LR = 0.0005
     WHIGHT_DECAY = 0.001
 
     N_EPOCH = 1
-    EPOCH_STEPS = 4000
+    EPOCH_STEPS = 3000
     # EPOCH_UNTIL_VALIDATION = 100
     # PATIENCE = 2
     # DELTA = 0.01
@@ -93,7 +89,6 @@ def multiclass_classification():
     proc.apply()
     X_test, y_test = proc.build()
 
-
     device = "cpu"
     if torch.cuda.is_available():
         device = "cuda"
@@ -103,15 +98,17 @@ def multiclass_classification():
     train_dataset = tabular_datasets.TabularDataset(
         X_train[prop.numeric_features],
         X_train[prop.categorical_features],
+        y_train,
         device,
-        y_train
+        "multiclass"
     )
 
     test_dataset = tabular_datasets.TabularDataset(
         X_test[prop.numeric_features], 
         X_test[prop.categorical_features], 
-        device, 
-        y_test
+        y_test,
+        device,
+        "multiclass"
     )
 
     @trans_builder.add_step(order=1)
@@ -151,19 +148,18 @@ def multiclass_classification():
         shuffle=False,
     )
 
-    inputs, _ = next(iter(train_dataloader))
-    input_shape = inputs.shape[-1]
+    input_shape = next(iter(train_dataloader))[0].shape[-1]
+    num_classes = len(class_mapping)
 
-    input_encoding = input_encoder.InputEncoder(input_shape, EMBED_DIM)
-    transformer_block = transformer.TransformerEncoderOnly(
-        EMBED_DIM, NUM_HEADS, NUM_LAYERS, DIM_FF, DROPUT
-    )
-    num_classes = len(class_mapping.keys())
-    class_head = classification_head.ClassificationHead(EMBED_DIM, num_classes)
-
-    model = nn_classifier.NNClassifier(
-        input_encoding, transformer_block, class_head
-    ).to(device=device)
+    model = transformer.TransformerClassifier(
+        num_classes=num_classes,
+        input_dim=input_shape,
+        embed_dim=EMBED_DIM,
+        num_heads=NUM_HEADS,
+        num_layers=NUM_LAYERS,
+        ff_dim=FF_DIM,
+        dropout=DROPUT
+    ).to(device)
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logging.info(f"Total number of parameters: {total_params}")
@@ -173,7 +169,7 @@ def multiclass_classification():
     weights = weights / weights.sum()
     logging.info(f"weights: {weights}")
     
-    criterion = criterion = nn.CrossEntropyLoss(weight=torch.tensor(weights, dtype=torch.float32, device=device))
+    criterion = nn.CrossEntropyLoss(weight=torch.tensor(weights, dtype=torch.float32, device=device))
     optimizer = optim.Adam(
         model.parameters(),
         lr=LR,
@@ -207,7 +203,7 @@ def binary_classification():
     NUM_HEADS = 2
     NUM_LAYERS = 4
     DROPUT = 0.1
-    DIM_FF = 128
+    FF_DIM = 128
     LR = 0.0005
     WHIGHT_DECAY = 0.001
 
@@ -268,15 +264,15 @@ def binary_classification():
     train_dataset = tabular_datasets.TabularDataset(
         X_train[prop.numeric_features],
         X_train[prop.categorical_features],
-        device,
-        y_train
+        y_train,
+        device
     )
 
     test_dataset = tabular_datasets.TabularDataset(
         X_test[prop.numeric_features], 
         X_test[prop.categorical_features], 
-        device, 
-        y_test
+        y_test,
+        device
     )
 
     @trans_builder.add_step(order=1)
@@ -316,18 +312,17 @@ def binary_classification():
         shuffle=False,
     )
 
-    inputs, _ = next(iter(train_dataloader))
-    input_shape = inputs.shape[-1]
+    input_shape = next(iter(train_dataloader))[0].shape[-1]
 
-    input_encoding = input_encoder.InputEncoder(input_shape, EMBED_DIM)
-    transformer_block = transformer.TransformerEncoderOnly(
-        EMBED_DIM, NUM_HEADS, NUM_LAYERS, DIM_FF, DROPUT
-    )
-    class_head = classification_head.ClassificationHead(EMBED_DIM, 1)
-
-    model = nn_classifier.NNClassifier(
-        input_encoding, transformer_block, class_head
-    ).to(device=device)
+    model = transformer.TransformerClassifier(
+        num_classes=1,
+        input_dim=input_shape,
+        embed_dim=EMBED_DIM,
+        num_heads=NUM_HEADS,
+        num_layers=NUM_LAYERS,
+        ff_dim=FF_DIM,
+        dropout=DROPUT
+    ).to(device)
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logging.info(f"Total number of parameters: {total_params}")
@@ -370,8 +365,8 @@ def generate_train_test():
 
 def main():
     # generate_train_test()
-    # binary_classification()
-    multiclass_classification()
+    binary_classification()
+    # multiclass_classification()
 
 
 if __name__ == "__main__":

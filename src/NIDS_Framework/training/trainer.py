@@ -38,17 +38,15 @@ class EarlyStopping:
 
         if self.best_score is None:
             self.best_score = score
-            self.save_checkpoint(val_loss, model)
-        elif score < self.best_score - self.best_score * self.delta:
+            self._save_checkpoint(val_loss, model)
+        elif score < self.best_score * (1 - self.delta):
             self.counter += 1
-            logging.info(
-                f"EarlyStopping counter: {self.counter} out of {self.patience}"
-            )
+            logging.info(f"EarlyStopping counter: {self.counter}/{self.patience}")
             if self.counter >= self.patience:
                 self.early_stop = True
         else:
             self.best_score = score
-            self.save_checkpoint(val_loss, model)
+            self._save_checkpoint(val_loss, model)
             self.counter = 0
 
     def save_checkpoint(
@@ -61,10 +59,7 @@ class EarlyStopping:
             f"Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}). Saving model ..."
         )
 
-        dir_name = os.path.dirname(f_path)
-        if not os.path.exists(dir_name):
-            os.makedirs(dir_name)
-
+        os.makedirs(os.path.dirname(f_path), exist_ok=True)
         torch.save(model.state_dict(), f_path)
         self.val_loss_min = val_loss
 
@@ -88,6 +83,7 @@ class Trainer:
         self._optimizer: Optimizer = optimizer
 
     #@trace_stats()
+    
     def train(
         self,
         n_epoch: int,
@@ -100,56 +96,39 @@ class Trainer:
     ) -> float:
         logging.info(f"Starting {n_epoch}-epoch training loop...")
 
-        if patience is not None and delta is not None:
-            early_stopping = EarlyStopping(patience, delta)
-
+        early_stopping = EarlyStopping(patience, delta) if patience and delta else None
         train_loss = 0.0
-        self._model.train()
 
         for epoch in range(n_epoch):
             epoch_loss = self.train_one_epoch(train_data_loader, epoch_steps)
             train_loss += epoch_loss
-            logging.info(f"Epoch: {epoch} Loss: {epoch_loss:.6f}.\n")
+            logging.info(f"Epoch {epoch+1}/{n_epoch} Loss: {epoch_loss:.6f}")
 
-            if valid_data_loader:
-                if (epoch + 1) % epochs_until_validation == 0:
-                    validation_loss = self.validate(valid_data_loader)
-                    early_stopping(validation_loss, self._model)
-                    if early_stopping.early_stop:
-                        logging.info(f"Early stopping in epoch: {epoch+1}")
-                        self._model.load_state_dict(
-                            torch.load("checkpoints/checkpoint.pt")
-                        )
-                        break
-                    else:
-                        self._model.train()
+            if valid_data_loader and epochs_until_validation and (epoch + 1) % epochs_until_validation == 0:
+                validation_loss = self.validate(valid_data_loader)
+                early_stopping(validation_loss, self._model)
+                if early_stopping.early_stop:
+                    logging.info(f"Early stopping at epoch {epoch+1}")
+                    self._model.load_state_dict(torch.load("checkpoints/checkpoint.pt"))
+                    break
+                
 
-        train_loss /= epoch + 1
-        logging.info("Done with training.")
-        logging.info(f"Trained for {epoch + 1} epochs with loss: {train_loss:.6f}.\n")
+        train_loss /= n_epoch
+        logging.info(f"Training completed: {n_epoch} epochs, Average Loss: {train_loss:.6f}")
         return train_loss
-
+    
     def train_one_epoch(
         self, data_loader: DataLoader, epoch_steps: Optional[int] = None
     ) -> float:
         epoch_loss = 0.0
+        total_steps = min(epoch_steps, len(data_loader))
+        data_iter = iter(data_loader)
 
-        if epoch_steps is None:
-            for batch in tqdm(data_loader, desc="Training"):
-                epoch_loss += self._train_one_batch(batch)
-            epoch_loss /= len(data_loader)
-        else:
-            if epoch_steps > len(data_loader):
-                raise ValueError(
-                    f"Epoch steps must be less or at least equal to {len(data_loader)}."
-                )
-            epoch_iter = iter(data_loader)
-            for _ in tqdm(range(epoch_steps), desc="Training"):
-                batch = next(epoch_iter)
-                epoch_loss += self._train_one_batch(batch)
-            epoch_loss /= epoch_steps
-
-        return epoch_loss
+        self._model.train()
+        for _ in tqdm(range(total_steps), desc="Training"):
+            epoch_loss += self._train_one_batch(next(data_iter))
+            
+        return epoch_loss / total_steps
 
     def _train_one_batch(self, batch: Tuple[torch.Tensor, torch.Tensor]) -> float:
         inputs, labels = batch
@@ -181,8 +160,6 @@ class Trainer:
 
     #@trace_stats()
     def test(self, data_loader: DataLoader, metric: metrics.Metric) -> None:
-        if metric is None:
-            raise ValueError("Please provide metic before testing.")
         logging.info(f"Starting test loop...")
 
         self._model.eval()
@@ -198,11 +175,7 @@ class Trainer:
 
     def save_model(self, f_path: Optional[str] = "saves/model.pt") -> None:
         logging.info("Saving model weights...")
-
-        dir_name = os.path.dirname(f_path)
-        if not os.path.exists(dir_name):
-            os.makedirs(dir_name)
-
+        os.makedirs(os.path.dirname(f_path), exist_ok=True)
         torch.save(self._model.state_dict(), f_path)
         logging.info("Done")
 

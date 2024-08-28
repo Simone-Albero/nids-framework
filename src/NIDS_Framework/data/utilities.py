@@ -100,7 +100,7 @@ def bynary_label_conversion(
 ) -> None:
     logging.debug("Converting class labels to numeric values...")
     dataset[properties.labels] = ~(
-        dataset[properties.labels].astype("str") == str(properties.benign_label)
+        dataset[properties.labels].astype("str") == properties.benign_label
     )
 
 def multi_class_label_conversion(
