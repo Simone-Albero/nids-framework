@@ -119,19 +119,19 @@ def multiclass_classification():
     train_dataset.set_categorical_transformation(transformations)
     test_dataset.set_categorical_transformation(transformations)
 
-    train_sampler = samplers.RandomSlidingWindowSampler(
-        train_dataset, window_size=WINDOW_SIZE
-    )
-    test_sampler = samplers.RandomSlidingWindowSampler(
-        test_dataset, window_size=WINDOW_SIZE
-    )
+    # train_sampler = samplers.RandomSlidingWindowSampler(
+    #     train_dataset, window_size=WINDOW_SIZE
+    # )
+    # test_sampler = samplers.RandomSlidingWindowSampler(
+    #     test_dataset, window_size=WINDOW_SIZE
+    # )
 
-    # train_sampler = samplers.GroupWindowSampler(
-    #     train_dataset, WINDOW_SIZE, df_train, "IPV4_DST_ADDR"
-    # )
-    # test_sampler = samplers.GroupWindowSampler(
-    #     test_dataset, WINDOW_SIZE, df_test, "IPV4_DST_ADDR"
-    # )
+    train_sampler = samplers.GroupWindowSampler(
+        train_dataset, WINDOW_SIZE, df_train, "IPV4_SRC_ADDR"
+    )
+    test_sampler = samplers.GroupWindowSampler(
+        test_dataset, WINDOW_SIZE, df_test, "IPV4_SRC_ADDR"
+    )
 
     train_dataloader = DataLoader(
         train_dataset,
@@ -190,7 +190,8 @@ def multiclass_classification():
 
 def binary_classification():
     CONFIG_PATH = "configs/dataset_properties.ini"
-    DATASET_NAME = "nf_ton_iot_v2_binary_anonymous"
+    # DATASET_NAME = "nf_ton_iot_v2_binary_anonymous"
+    DATASET_NAME = "nf_ton_iot_v2_binary_ddos"
     TRAIN_PATH = "dataset/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
     TEST_PATH = "dataset/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
 
@@ -283,19 +284,19 @@ def binary_classification():
     train_dataset.set_categorical_transformation(transformations)
     test_dataset.set_categorical_transformation(transformations)
 
-    train_sampler = samplers.RandomSlidingWindowSampler(
-        train_dataset, window_size=WINDOW_SIZE
-    )
-    test_sampler = samplers.RandomSlidingWindowSampler(
-        test_dataset, window_size=WINDOW_SIZE
-    )
+    # train_sampler = samplers.RandomSlidingWindowSampler(
+    #     train_dataset, window_size=WINDOW_SIZE
+    # )
+    # test_sampler = samplers.RandomSlidingWindowSampler(
+    #     test_dataset, window_size=WINDOW_SIZE
+    # )
 
-    # train_sampler = samplers.GroupWindowSampler(
-    #     train_dataset, WINDOW_SIZE, df_train, "IPV4_SRC_ADDR"
-    # )
-    # test_sampler = samplers.GroupWindowSampler(
-    #     test_dataset, WINDOW_SIZE, df_test, "IPV4_SRC_ADDR"
-    # )
+    train_sampler = samplers.GroupWindowSampler(
+        train_dataset, WINDOW_SIZE, df_train, "IPV4_SRC_ADDR"
+    )
+    test_sampler = samplers.GroupWindowSampler(
+        test_dataset, WINDOW_SIZE, df_test, "IPV4_SRC_ADDR"
+    )
 
     train_dataloader = DataLoader(
         train_dataset,
