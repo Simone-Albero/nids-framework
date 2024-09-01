@@ -111,17 +111,6 @@ def multi_class_label_conversion(
     logging.debug("Converting class labels to numeric values...")
     dataset[properties.labels] = dataset[properties.labels].apply(lambda x: mapping.get(x))
 
-def one_hot_encoding(sample: Dict[str, Any], levels: int) -> Dict[str, Any]:
-    features = sample["data"]
-    one_hot = torch.nn.functional.one_hot(features, num_classes=levels)
-
-    if len(one_hot.shape) == 2:
-        sample["data"] = one_hot.flatten()
-    elif len(one_hot.shape) > 2:
-        sample["data"] = one_hot.view(one_hot.size(0), -1)
-
-    return sample
-
 def log_transformation(sample: Dict[str, Any], min_values: torch.Tensor, max_values: torch.Tensor) -> Dict[str, Any]:
     features = sample["data"]
     gaps = max_values - min_values
@@ -149,4 +138,23 @@ def categorical_value_encoding(sample: Dict[str, Any], categorical_levels: torch
         value_encoding[:, col_idx] = encoded_indices.squeeze()
 
     sample["data"] = value_encoding
+    return sample
+
+def one_hot_encoding(sample: Dict[str, Any], levels: int) -> Dict[str, Any]:
+    features = sample["data"]
+    one_hot = torch.nn.functional.one_hot(features, num_classes=levels)
+
+    if len(one_hot.shape) == 2:
+        sample["data"] = one_hot.flatten()
+    elif len(one_hot.shape) > 2:
+        sample["data"] = one_hot.view(one_hot.size(0), -1)
+
+    return sample
+
+def mask_features(sample: Dict[str, Any], mask_prob: Optional[float] = 0.1, mask_value: Optional[Any] = 0.0) -> Dict[str, Any]:
+    data = sample["data"]
+    mask = torch.rand(data.shape, device=data.device) < mask_prob
+
+    data = torch.where(mask, torch.tensor(mask_value, device=data.device), data)
+    sample["data"] = data
     return sample

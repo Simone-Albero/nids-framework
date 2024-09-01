@@ -25,7 +25,6 @@ class TabularDataset(Dataset):
         device: str = 'cpu',
         classification_type: str = 'binary'
     ) -> None:
-        super().__init__()
         self.numeric_data = torch.tensor(
             numeric_data.values, dtype=torch.float32, device=device
         )
@@ -80,3 +79,66 @@ class TabularDataset(Dataset):
 
     def set_target_transformation(self, transformations: List[Callable]) -> None:
         self.target_transformation = Compose(transformations)
+    
+class TabularReconstructionDataset(Dataset):
+
+    __slots__ = [
+        "numeric_data",
+        "categorical_data",
+        "numeric_transformation",
+        "categorical_transformation",
+        "masking_transformation",
+    ]
+    
+    def __init__(
+        self,
+        numeric_data: pd.DataFrame,
+        categorical_data: pd.DataFrame,
+        device: str = 'cpu',
+    ) -> None:
+        self.numeric_data = torch.tensor(
+            numeric_data.values, dtype=torch.float32, device=device
+        )
+
+        self.categorical_data = torch.tensor(
+            categorical_data.values, dtype=torch.long, device=device
+        )
+
+        self.numeric_transformation: Optional[Compose] = None
+        self.categorical_transformation: Optional[Compose] = None
+        self.masking_transformation: Optional[Compose] = None
+
+    def __len__(self) -> int:
+        return len(self.numeric_data)
+
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        numeric_sample = {"data": self.numeric_data[idx]}
+        if self.numeric_transformation:
+            numeric_sample = self.numeric_transformation(numeric_sample)
+
+        categorical_sample = {"data": self.categorical_data[idx]}
+        if self.categorical_transformation:
+            categorical_sample = self.categorical_transformation(categorical_sample)
+
+        categorical_sample["data"] = categorical_sample["data"].float()
+        originial_features = torch.cat(
+            (numeric_sample["data"], categorical_sample["data"]), dim=-1
+        )
+
+        original_sample  = {"data": originial_features}
+        if self.masking_transformation:
+            masked_features = self.masking_transformation(original_sample)["data"]
+
+        return masked_features, originial_features
+
+    def set_numeric_transformation(self, transformations: List[Callable]) -> None:
+        self.numeric_transformation = Compose(transformations)
+
+    def set_categorical_transformation(self, transformations: List[Callable]) -> None:
+        self.categorical_transformation = Compose(transformations)
+
+    def set_masking_transformation(self, transformations: List[Callable]) -> None:
+        self.masking_transformation = Compose(transformations)
+
+    def get_border(self) -> int:
+        return self.numeric_data.shape[1]

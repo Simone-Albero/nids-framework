@@ -159,19 +159,28 @@ class Trainer:
         return validation_loss
 
     #@trace_stats()
-    def test(self, data_loader: DataLoader, metric: metrics.Metric) -> None:
+    def test(self, data_loader: DataLoader, metric: Optional[metrics.Metric] = None) -> None:
         logging.info(f"Starting test loop...")
+        test_loss = 0.0
 
         self._model.eval()
         with torch.no_grad():
             for inputs, labels in tqdm(data_loader, desc="Testing"):
                 outputs = self._model(inputs)
-                metric.step(outputs, labels)
 
-        metric.compute_metrics()
+                loss = self._criterion(outputs, labels)
+                test_loss += loss.item()
+                if metric is not None:
+                    metric.step(outputs, labels)
+
+        test_loss /= len(data_loader)
         logging.info("Done with testing.")
-        logging.info(f"{metric}\n")
-        metric.save()
+        logging.info(f"Test loss: {test_loss:.6f}.\n")
+
+        if metric is not None:
+            metric.compute_metrics()
+            logging.info(f"{metric}\n")
+            metric.save()
 
     def save_model(self, f_path: Optional[str] = "saves/model.pt") -> None:
         logging.info("Saving model weights...")

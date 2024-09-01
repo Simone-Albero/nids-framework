@@ -44,3 +44,39 @@ class TransformerClassifier(nn.Module):
             x = F.softmax(x, dim=-1)
 
         return x
+    
+class TransformerAutoencoder(nn.Module):
+
+    __slots__ = [
+        "embedding",
+        "encoder",
+        "reconstructor",
+        "dropout",
+        "border",
+    ]
+
+    def __init__(self, input_dim: int, border: int, embed_dim: Optional[int] = 128, num_heads: Optional[int] = 2, num_layers: Optional[int] = 4, ff_dim: Optional[int] = 64, dropout: Optional[float] = 0.1):
+        super(TransformerAutoencoder, self).__init__()
+        self.embedding: nn.Module = nn.Linear(input_dim, embed_dim)
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=embed_dim,
+            nhead=num_heads,
+            dim_feedforward=ff_dim,
+            dropout=dropout,
+            batch_first=True
+        )
+        self.encoder: nn.Module = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        self.reconstructor: nn.Module = nn.Linear(embed_dim, input_dim)
+        self.dropout: nn.Module = nn.Dropout(dropout)
+        self.border: int = border
+
+    def forward(self, x):
+        x = self.embedding(x)
+        x = self.encoder(x)
+        x = self.dropout(x)
+        x = self.reconstructor(x)
+
+        reconstructed_numeric = x[:, :self.border]
+        reconstructed_categorical = x[:, self.border:]
+
+        return reconstructed_numeric, reconstructed_categorical
