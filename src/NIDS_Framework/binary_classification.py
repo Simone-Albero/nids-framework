@@ -42,8 +42,8 @@ def binary_classification():
     LR = 0.0005
     WHIGHT_DECAY = 0.001
 
-    N_EPOCH = 1
-    EPOCH_STEPS = 10 #500
+    N_EPOCH = 4
+    EPOCH_STEPS = 128 #500
     # EPOCH_UNTIL_VALIDATION = 100
     # PATIENCE = 2
     # DELTA = 0.01
@@ -118,19 +118,19 @@ def binary_classification():
     train_dataset.set_categorical_transformation(transformations)
     test_dataset.set_categorical_transformation(transformations)
 
-    # train_sampler = samplers.RandomSlidingWindowSampler(
-    #     train_dataset, window_size=WINDOW_SIZE
-    # )
-    # test_sampler = samplers.RandomSlidingWindowSampler(
-    #     test_dataset, window_size=WINDOW_SIZE
-    # )
+    train_sampler = samplers.RandomSlidingWindowSampler(
+        train_dataset, window_size=WINDOW_SIZE
+    )
+    test_sampler = samplers.RandomSlidingWindowSampler(
+        test_dataset, window_size=WINDOW_SIZE
+    )
 
-    train_sampler = samplers.GroupWindowSampler(
-        train_dataset, WINDOW_SIZE, df_train, "IPV4_SRC_ADDR"
-    )
-    test_sampler = samplers.GroupWindowSampler(
-        test_dataset, WINDOW_SIZE, df_test, "IPV4_SRC_ADDR"
-    )
+    # train_sampler = samplers.GroupWindowSampler(
+    #     train_dataset, WINDOW_SIZE, df_train, "IPV4_SRC_ADDR"
+    # )
+    # test_sampler = samplers.GroupWindowSampler(
+    #     test_dataset, WINDOW_SIZE, df_test, "IPV4_SRC_ADDR"
+    # )
 
     train_dataloader = DataLoader(
         train_dataset,

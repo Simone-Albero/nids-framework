@@ -58,6 +58,7 @@ class BinaryClassificationMetric(Metric):
         "precision",
         "recall",
         "f1",
+        "balanced_accuracy",
         "_threshold",
     ]
 
@@ -66,6 +67,7 @@ class BinaryClassificationMetric(Metric):
         self.precision: float = 0.0
         self.recall: float = 0.0
         self.f1: float = 0.0
+        self.balanced_accuracy: float = 0.0
         self._threshold: float = threshold
 
     def step(self, y: torch.Tensor, y_true: torch.Tensor) -> None:
@@ -76,7 +78,10 @@ class BinaryClassificationMetric(Metric):
         TP = self._confusion_matrix[1, 1]
         FP = self._confusion_matrix[0, 1]
         FN = self._confusion_matrix[1, 0]
-
+        TN = self._confusion_matrix[0, 0]
+        sensitivity = TP / (TP + FN) if (TP + FN) > 0 else 0
+        specificity = TN / (TN + FP) if (TN + FP) > 0 else 0
+        
         self.precision = TP / (TP + FP) if (TP + FP) > 0 else 0.0
         self.recall = TP / (TP + FN) if (TP + FN) > 0 else 0.0
         self.f1 = (
@@ -84,12 +89,13 @@ class BinaryClassificationMetric(Metric):
             if (self.precision + self.recall) > 0
             else 0.0
         )
+        self.balanced_accuracy = (sensitivity + specificity) / 2
 
     def __str__(self) -> str:
         return (
             f"Confusion Matrix:\n{self._confusion_matrix}\n"
             f"Binary classification metrics:\n"
-            f"Class 1 - Precision: {self.precision:.4f}, Recall: {self.recall:.4f}, F1 Score: {self.f1:.4f}\n"
+            f"Class 1 - Precision: {self.precision:.4f}, Recall: {self.recall:.4f}, F1 Score: {self.f1:.4f}, Balanced Accuracy: {self.balanced_accuracy:.4f}\n"
         )
     
     def save(

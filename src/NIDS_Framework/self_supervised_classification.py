@@ -248,9 +248,9 @@ def self_supervised_classification():
 
     train = trainer.Trainer(model, criterion, optimizer)
     train.train(
-        n_epoch=N_EPOCH,
+        n_epoch=4,
         train_data_loader=train_dataloader,
-        epoch_steps=10,
+        epoch_steps=128,
     )
     train.save_model(f"saves/s{WINDOW_SIZE}.pt")
 
