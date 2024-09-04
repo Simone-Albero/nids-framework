@@ -47,7 +47,7 @@ def self_supervised_classification():
     prop = named_prop.get_properties(DATASET_NAME)
 
     df_train = pd.read_csv(TRAIN_PATH)
-    df_test = pd.read_csv(TEST_PATH)
+    df_test = pd.read_csv(TEST_PATH, nrows=100000)
 
     trans_builder = transformation_builder.TransformationBuilder()
 
@@ -98,8 +98,8 @@ def self_supervised_classification():
     )
 
     test_dataset = tabular_datasets.TabularReconstructionDataset(
-        X_test[prop.numeric_features].head(100000), 
-        X_test[prop.categorical_features].head(100000), 
+        X_test[prop.numeric_features], 
+        X_test[prop.categorical_features], 
         device
     )
 
@@ -113,7 +113,7 @@ def self_supervised_classification():
 
     @trans_builder.add_step(order=1)
     def mask_features(sample):
-        return utilities.mask_features(sample, 0.3)
+        return utilities.mask_features(sample, 0.4)
 
     transformations = trans_builder.build()
     train_dataset.set_masking_transformation(transformations)
@@ -170,7 +170,7 @@ def self_supervised_classification():
         epoch_steps=EPOCH_STEPS,
     )
     train.save_model(f"saves/s{WINDOW_SIZE}.pt")
-    train.test(test_dataloader)
+    #train.test(test_dataloader)
 
 
     train_dataset = tabular_datasets.TabularDataset(
@@ -229,6 +229,9 @@ def self_supervised_classification():
         ff_dim=FF_DIM,
         dropout=DROPUT
     ).to(device)
+    
+    for param in pre_trained_encoder.parameters():
+        param.requires_grad = False
     model.encoder = pre_trained_encoder
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -248,7 +251,7 @@ def self_supervised_classification():
 
     train = trainer.Trainer(model, criterion, optimizer)
     train.train(
-        n_epoch=4,
+        n_epoch=1,
         train_data_loader=train_dataloader,
         epoch_steps=128,
     )

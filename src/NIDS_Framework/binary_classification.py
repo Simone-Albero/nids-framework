@@ -42,7 +42,7 @@ def binary_classification():
     LR = 0.0005
     WHIGHT_DECAY = 0.001
 
-    N_EPOCH = 4
+    N_EPOCH = 1
     EPOCH_STEPS = 128 #500
     # EPOCH_UNTIL_VALIDATION = 100
     # PATIENCE = 2
@@ -52,7 +52,7 @@ def binary_classification():
     prop = named_prop.get_properties(DATASET_NAME)
 
     df_train = pd.read_csv(TRAIN_PATH)
-    df_test = pd.read_csv(TEST_PATH)
+    df_test = pd.read_csv(TEST_PATH, nrows=100000)
 
     trans_builder = transformation_builder.TransformationBuilder()
 
