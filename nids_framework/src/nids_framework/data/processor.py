@@ -3,7 +3,7 @@ import logging
 
 import pandas as pd
 
-from data.properties import DatasetProperties
+from .properties import DatasetProperties
 
 
 class Processor:

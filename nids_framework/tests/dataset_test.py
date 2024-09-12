@@ -32,7 +32,7 @@ def indices_test():
                         [17, 18, 19, 20]])
 
 def temporal_analysis():
-    file_path = "dataset/NF-ToN-IoT-V2/NF-ToN-IoT-v2.csv"
+    file_path = "../datasets/NF-ToN-IoT-V2/NF-ToN-IoT-v2.csv"
     df = pd.read_csv(file_path)
     
     target_column = "Attack"
@@ -77,7 +77,7 @@ def temporal_analysis():
         plt.close()
 
 def spatial_analysis():
-    file_path = "dataset/NF-ToN-IoT-V2/NF-ToN-IoT-v2.csv"
+    file_path = "../datasets/NF-ToN-IoT-V2/NF-ToN-IoT-v2.csv"
     df = pd.read_csv(file_path)
     
     target_column = "Attack"

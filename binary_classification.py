@@ -6,7 +6,7 @@ import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader
 
-from data import (
+from nids_framework.data import (
     properties,
     processor,
     utilities,
@@ -14,20 +14,16 @@ from data import (
     samplers,
     tabular_datasets,
 )
-from model import transformer
-
-from training import (
-    trainer,
-    metrics,
-)
+from nids_framework.model import transformer
+from nids_framework.training import trainer, metrics
 
 
 def binary_classification():
     CONFIG_PATH = "configs/dataset_properties.ini"
     DATASET_NAME = "nf_ton_iot_v2_binary_anonymous"
     # DATASET_NAME = "nf_ton_iot_v2_binary_ddos"
-    TRAIN_PATH = "dataset/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
-    TEST_PATH = "dataset/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
+    TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
+    TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
 
     CATEGORICAL_LEV = 32
     BOUND = 100000000

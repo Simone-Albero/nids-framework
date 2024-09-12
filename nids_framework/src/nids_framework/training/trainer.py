@@ -10,8 +10,8 @@ from torch.nn.modules.loss import _Loss
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 
-from training import metrics
-from tools.utilities import trace_stats
+from .metrics import Metric
+from ..tools.utilities import trace_stats
 
 
 class EarlyStopping:
@@ -159,7 +159,7 @@ class Trainer:
         return validation_loss
 
     #@trace_stats()
-    def test(self, data_loader: DataLoader, metric: Optional[metrics.Metric] = None) -> None:
+    def test(self, data_loader: DataLoader, metric: Optional[Metric] = None) -> None:
         logging.info(f"Starting test loop...")
         test_loss = 0.0
 

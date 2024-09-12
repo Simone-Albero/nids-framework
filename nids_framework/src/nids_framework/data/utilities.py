@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import torch
 
-from data.processor import DatasetProperties
+from .processor import DatasetProperties
 
 def min_max_values(dataset: pd.DataFrame, properties: DatasetProperties, bound: Optional[int] = np.inf) -> Tuple[Dict[str,float], Dict[str,float]]:
     min_values = {}

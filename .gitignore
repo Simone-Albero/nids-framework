@@ -1,5 +1,5 @@
 # Custom skipped files
-dataset/
+datasets/
 logs/
 checkpoints/
 saves/
