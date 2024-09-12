@@ -1,4 +1,3 @@
-from typing import List, Callable, Tuple
 import logging
 
 import pandas as pd
@@ -20,16 +19,16 @@ class Processor:
         df: pd.DataFrame,
         properties: DatasetProperties,
     ) -> None:
-        self._properties: DatasetProperties = properties
-        self._df: pd.DataFrame = df
-        self._transformations: List[Callable] = []
+        self._properties = properties
+        self._df = df
+        self._transformations: list[callable] = []
 
     @property
-    def transformations(self) -> List[Callable]:
+    def transformations(self) -> list[callable]:
         return self._transformations
 
     @transformations.setter
-    def transformations(self, transformations: List[Callable]) -> None:
+    def transformations(self, transformations: list[callable]) -> None:
         self._transformations = sorted(
             transformations, key=lambda transform_function: transform_function.order
         )
@@ -41,5 +40,5 @@ class Processor:
 
         logging.info("Completed.\n")
 
-    def build(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def build(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         return self._df[self._properties.features], self._df[self._properties.labels]

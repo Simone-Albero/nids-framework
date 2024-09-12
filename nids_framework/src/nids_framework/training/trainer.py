@@ -1,4 +1,3 @@
-from typing import Tuple, Optional
 import logging
 import os
 
@@ -17,21 +16,21 @@ from ..tools.utilities import trace_stats
 class EarlyStopping:
 
     __slots__ = [
-        "patience",
-        "delta",
-        "counter",
         "best_score",
         "early_stop",
         "val_loss_min",
+        "_patience",
+        "_delta",
+        "_counter",
     ]
 
-    def __init__(self, patience: Optional[int] = 7, delta: Optional[float] = 0):
-        self.patience: int = patience
-        self.delta: float = delta
-        self.counter: int = 0
+    def __init__(self, patience: int = 7, delta: float = 0):
         self.best_score: float = None
         self.early_stop: bool = False
         self.val_loss_min: float = np.inf
+        self._patience = patience
+        self._delta = delta
+        self._counter: int = 0
 
     def __call__(self, val_loss: float, model: nn.Module):
         score = -val_loss
@@ -39,21 +38,21 @@ class EarlyStopping:
         if self.best_score is None:
             self.best_score = score
             self._save_checkpoint(val_loss, model)
-        elif score < self.best_score * (1 - self.delta):
-            self.counter += 1
-            logging.info(f"EarlyStopping counter: {self.counter}/{self.patience}")
-            if self.counter >= self.patience:
+        elif score < self.best_score * (1 - self._delta):
+            self._counter += 1
+            logging.info(f"EarlyStopping counter: {self._counter}/{self._patience}")
+            if self._counter >= self._patience:
                 self.early_stop = True
         else:
             self.best_score = score
             self._save_checkpoint(val_loss, model)
-            self.counter = 0
+            self._counter = 0
 
     def save_checkpoint(
         self,
         val_loss: float,
         model: nn.Module,
-        f_path: Optional[str] = "checkpoints/checkpoint.pt",
+        f_path: str = "checkpoints/checkpoint.pt",
     ):
         logging.info(
             f"Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}). Saving model ..."
@@ -75,24 +74,23 @@ class Trainer:
     def __init__(
         self,
         model: nn.Module,
-        criterion: Optional[_Loss] = None,
-        optimizer: Optional[Optimizer] = None,
+        criterion: _Loss = None,
+        optimizer: Optimizer = None,
     ) -> None:
-        self._model: nn.Module = model
-        self._criterion: _Loss = criterion
-        self._optimizer: Optimizer = optimizer
+        self._model = model
+        self._criterion = criterion
+        self._optimizer = optimizer
 
     #@trace_stats()
-    
     def train(
         self,
         n_epoch: int,
         train_data_loader: DataLoader,
-        epoch_steps: Optional[int] = None,
-        epochs_until_validation: Optional[int] = None,
-        valid_data_loader: Optional[DataLoader] = None,
-        patience: Optional[int] = None,
-        delta: Optional[float] = None,
+        epoch_steps: int = None,
+        epochs_until_validation: int = None,
+        valid_data_loader: DataLoader = None,
+        patience: int = None,
+        delta: float = None,
     ) -> float:
         logging.info(f"Starting {n_epoch}-epoch training loop...")
 
@@ -118,7 +116,7 @@ class Trainer:
         return train_loss
     
     def train_one_epoch(
-        self, data_loader: DataLoader, epoch_steps: Optional[int] = None
+        self, data_loader: DataLoader, epoch_steps: int = None
     ) -> float:
         epoch_loss = 0.0
         total_steps = min(epoch_steps, len(data_loader))
@@ -130,7 +128,7 @@ class Trainer:
             
         return epoch_loss / total_steps
 
-    def _train_one_batch(self, batch: Tuple[torch.Tensor, torch.Tensor]) -> float:
+    def _train_one_batch(self, batch: tuple[torch.Tensor, torch.Tensor]) -> float:
         inputs, labels = batch
 
         self._optimizer.zero_grad()
@@ -159,7 +157,7 @@ class Trainer:
         return validation_loss
 
     #@trace_stats()
-    def test(self, data_loader: DataLoader, metric: Optional[Metric] = None) -> None:
+    def test(self, data_loader: DataLoader, metric: Metric = None) -> None:
         logging.info(f"Starting test loop...")
         test_loss = 0.0
 
@@ -182,13 +180,13 @@ class Trainer:
             logging.info(f"{metric}\n")
             metric.save()
 
-    def save_model(self, f_path: Optional[str] = "saves/model.pt") -> None:
+    def save_model(self, f_path: str = "saves/model.pt") -> None:
         logging.info("Saving model weights...")
         os.makedirs(os.path.dirname(f_path), exist_ok=True)
         torch.save(self._model.state_dict(), f_path)
         logging.info("Done")
 
-    def load_model(self, f_path: Optional[str] = "saves/model.pt") -> None:
+    def load_model(self, f_path: str = "saves/model.pt") -> None:
         logging.info("Loading model weights...")
         self._model.load_state_dict(torch.load(f_path))
         logging.info("Done")

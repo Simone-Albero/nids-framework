@@ -1,6 +1,5 @@
 import multiprocessing.queues
 import multiprocessing.synchronize
-from typing import Callable, Optional
 import time
 import multiprocessing
 import statistics
@@ -46,11 +45,11 @@ def collect_stats(
 
 
 def trace_stats(
-    interval: Optional[float] = 5,
-    file_path: Optional[str] = "logs/stats.csv",
-    reset_logs: Optional[bool] = False,
-) -> Callable:
-    def decorator(func: Callable) -> Callable:
+    interval: float = 5,
+    file_path: str = "logs/stats.csv",
+    reset_logs: bool = False,
+) -> callable:
+    def decorator(func: callable) -> callable:
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             stop_event = multiprocessing.Event()

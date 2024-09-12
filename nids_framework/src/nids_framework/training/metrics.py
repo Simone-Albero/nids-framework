@@ -1,4 +1,3 @@
-from typing import Optional
 import os
 
 import numpy as np
@@ -24,7 +23,7 @@ class Metric:
             labels=np.arange(self._n_classes),
         )
         self._confusion_matrix += batch_confusion_matrix
-    
+
     def step(self, y: torch.Tensor, y_true: torch.Tensor) -> None:
         pass
 
@@ -36,8 +35,8 @@ class Metric:
 
     def save(
         self,
-        file_path: Optional[str] = "logs/metrics.csv",
-        reset_logs: Optional[bool] = False,
+        file_path: str = "logs/metrics.csv",
+        reset_logs: bool = False,
     ) -> None:
         if reset_logs or not os.path.exists(file_path):
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
@@ -62,7 +61,7 @@ class BinaryClassificationMetric(Metric):
         "_threshold",
     ]
 
-    def __init__(self, threshold: Optional[float] = 0.5) -> None:
+    def __init__(self, threshold: float = 0.5) -> None:
         super().__init__(n_classes=2)
         self.precision: float = 0.0
         self.recall: float = 0.0
@@ -81,7 +80,7 @@ class BinaryClassificationMetric(Metric):
         TN = self._confusion_matrix[0, 0]
         sensitivity = TP / (TP + FN) if (TP + FN) > 0 else 0
         specificity = TN / (TN + FP) if (TN + FP) > 0 else 0
-        
+
         self.precision = TP / (TP + FP) if (TP + FP) > 0 else 0.0
         self.recall = TP / (TP + FN) if (TP + FN) > 0 else 0.0
         self.f1 = (
@@ -97,11 +96,11 @@ class BinaryClassificationMetric(Metric):
             f"Binary classification metrics:\n"
             f"Class 1 - Precision: {self.precision:.4f}, Recall: {self.recall:.4f}, F1 Score: {self.f1:.4f}, Balanced Accuracy: {self.balanced_accuracy:.4f}\n"
         )
-    
+
     def save(
         self,
-        file_path: Optional[str] = "logs/binary_metrics.csv",
-        reset_logs: Optional[bool] = False,
+        file_path: str = "logs/binary_metrics.csv",
+        reset_logs: bool = False,
     ) -> None:
         super().save(file_path, reset_logs)
 
@@ -129,13 +128,11 @@ class MulticlassClassificationMetric(Metric):
 
     def __init__(self, n_classes: int) -> None:
         super().__init__(n_classes)
-        self._class_stats: NDArray = np.zeros(
-            (n_classes, 3)
-        )  # Stores precision, recall, f1 for each class
+        self._class_stats: NDArray = np.zeros((n_classes, 3))
         self.weighted_precision: float = 0.0
         self.weighted_recall: float = 0.0
         self.weighted_f1: float = 0.0
-    
+
     def step(self, y: torch.Tensor, y_true: torch.Tensor) -> None:
         y_pred = torch.argmax(y, dim=1)
         self.update(y_pred, y_true)
@@ -190,11 +187,11 @@ class MulticlassClassificationMetric(Metric):
         output.append(f"\nTotal Support: {total_support}\n")
 
         return "".join(output)
-    
+
     def save(
         self,
-        file_path: Optional[str] = "logs/multiclass_metrics.csv",
-        reset_logs: Optional[bool] = False,
+        file_path: str = "logs/multiclass_metrics.csv",
+        reset_logs: bool = False,
     ) -> None:
         super().save(file_path, reset_logs)
 

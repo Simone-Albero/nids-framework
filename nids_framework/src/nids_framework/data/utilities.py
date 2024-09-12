@@ -1,4 +1,3 @@
-from typing import Dict, Any, List, Tuple, Optional
 import logging
 
 import pandas as pd
@@ -7,10 +6,13 @@ import torch
 
 from .processor import DatasetProperties
 
-def min_max_values(dataset: pd.DataFrame, properties: DatasetProperties, bound: Optional[int] = np.inf) -> Tuple[Dict[str,float], Dict[str,float]]:
+
+def min_max_values(
+    dataset: pd.DataFrame, properties: DatasetProperties, bound: int = np.inf
+) -> tuple[dict[str, float], dict[str, float]]:
     min_values = {}
     max_values = {}
-    
+
     for col in properties.numeric_features:
         column_values = dataset[col].values
         min_value = np.min(column_values)
@@ -22,7 +24,9 @@ def min_max_values(dataset: pd.DataFrame, properties: DatasetProperties, bound: 
     return min_values, max_values
 
 
-def unique_values(dataset: pd.DataFrame, properties: DatasetProperties, categorical_levels: int) -> Dict[str,List[Any]]:
+def unique_values(
+    dataset: pd.DataFrame, properties: DatasetProperties, categorical_levels: int
+) -> dict[str, list[any]]:
     unique_values = {}
 
     for col in properties.categorical_features:
@@ -31,7 +35,10 @@ def unique_values(dataset: pd.DataFrame, properties: DatasetProperties, categori
 
     return unique_values
 
-def labels_mapping(dataset: pd.DataFrame, properties: DatasetProperties) -> Tuple[Dict[Any, int], Dict[int, Any]]:
+
+def labels_mapping(
+    dataset: pd.DataFrame, properties: DatasetProperties
+) -> tuple[dict[any, int], dict[int, any]]:
     logging.debug("Mapping class labels to numeric values...")
     mapping = {}
     reverse = {}
@@ -41,6 +48,7 @@ def labels_mapping(dataset: pd.DataFrame, properties: DatasetProperties) -> Tupl
         reverse[idx] = label
 
     return mapping, reverse
+
 
 def base_pre_processing(
     dataset: pd.DataFrame,
@@ -59,20 +67,20 @@ def base_pre_processing(
 def log_pre_processing(
     dataset: pd.DataFrame,
     properties: DatasetProperties,
-    min_values: Dict[str, float],
-    max_values: Dict[str, float],
+    min_values: dict[str, float],
+    max_values: dict[str, float],
 ) -> None:
     logging.debug("Normalizing numeric features with Log...")
     for col in properties.numeric_features:
         column_values = dataset[col].values
-        min_value , max_value = min_values[col], max_values[col]
+        min_value, max_value = min_values[col], max_values[col]
         gap = max_value - min_value
 
         if gap == 0:
             dataset[col] = np.zeros_like(column_values, dtype="float32")
         else:
             column_values -= min_value
-            column_values = np.maximum(column_values, 0) # maybe not fair
+            column_values = np.maximum(column_values, 0)  # maybe not fair
             column_values = np.log(column_values + 1)
             column_values *= 1.0 / np.log(gap + 1)
             dataset[col] = column_values
@@ -81,7 +89,7 @@ def log_pre_processing(
 def categorical_pre_processing(
     dataset: pd.DataFrame,
     properties: DatasetProperties,
-    unique_values: Dict[str, List[Any]],
+    unique_values: dict[str, list[any]],
     categorical_levels: int,
 ) -> None:
     logging.debug(
@@ -103,30 +111,40 @@ def bynary_label_conversion(
         dataset[properties.labels].astype("str") == properties.benign_label
     )
 
+
 def multi_class_label_conversion(
     dataset: pd.DataFrame,
     properties: DatasetProperties,
-    mapping: Dict[Any, int],
+    mapping: dict[any, int],
 ) -> None:
     logging.debug("Converting class labels to numeric values...")
-    dataset[properties.labels] = dataset[properties.labels].apply(lambda x: mapping.get(x))
+    dataset[properties.labels] = dataset[properties.labels].apply(
+        lambda x: mapping.get(x)
+    )
 
-def log_transformation(sample: Dict[str, Any], min_values: torch.Tensor, max_values: torch.Tensor) -> Dict[str, Any]:
+
+def log_transformation(
+    sample: dict[str, any], min_values: torch.Tensor, max_values: torch.Tensor
+) -> dict[str, any]:
     features = sample["data"]
     gaps = max_values - min_values
 
     mask = gaps != 0
 
     features_transformed = torch.zeros_like(features)
-    features_transformed[mask] = torch.log(features[mask] + 1) / torch.log(gaps[mask] + 1)
+    features_transformed[mask] = torch.log(features[mask] + 1) / torch.log(
+        gaps[mask] + 1
+    )
 
     sample["data"] = features_transformed
     return sample
 
-def categorical_value_encoding(sample: Dict[str, Any], categorical_levels: torch.Tensor, categorical_bound: int) -> Dict[str, Any]:
-    features = sample["data"]
-    categorical_levels = categorical_levels[:, :(categorical_bound - 1)]
 
+def categorical_value_encoding(
+    sample: dict[str, any], categorical_levels: torch.Tensor, categorical_bound: int
+) -> dict[str, any]:
+    features = sample["data"]
+    categorical_levels = categorical_levels[:, : (categorical_bound - 1)]
 
     value_encoding = torch.zeros_like(features, dtype=torch.long)
     for col_idx in range(features.size(1)):
@@ -134,13 +152,16 @@ def categorical_value_encoding(sample: Dict[str, Any], categorical_levels: torch
         cat_col_levels = categorical_levels[:, col_idx].unsqueeze(0)  # Shape (1, L)
         mask = col_values == cat_col_levels  # Shape (N, L)
 
-        encoded_indices = mask.nonzero(as_tuple=True)[1].reshape(-1, features.size(0)).t() + 1
+        encoded_indices = (
+            mask.nonzero(as_tuple=True)[1].reshape(-1, features.size(0)).t() + 1
+        )
         value_encoding[:, col_idx] = encoded_indices.squeeze()
 
     sample["data"] = value_encoding
     return sample
 
-def one_hot_encoding(sample: Dict[str, Any], levels: int) -> Dict[str, Any]:
+
+def one_hot_encoding(sample: dict[str, any], levels: int) -> dict[str, any]:
     features = sample["data"]
     one_hot = torch.nn.functional.one_hot(features, num_classes=levels)
 
@@ -151,7 +172,10 @@ def one_hot_encoding(sample: Dict[str, Any], levels: int) -> Dict[str, Any]:
 
     return sample
 
-def mask_features(sample: Dict[str, Any], mask_prob: Optional[float] = 0.1, mask_value: Optional[Any] = 0.0) -> Dict[str, Any]:
+
+def mask_features(
+    sample: dict[str, any], mask_prob: float = 0.1, mask_value: any = 0.0
+) -> dict[str, any]:
     data = sample["data"]
     mask = torch.rand(data.shape, device=data.device) < mask_prob
 
