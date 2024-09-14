@@ -12,9 +12,7 @@ setup(
         'torchvision',
         'torchaudio',
         'tqdm',
-        'psutil',
-        'rich',
-        'matplotlib', 
+        'psutil', 
         'scikit-learn'
     ],
     author='Simone Albero',
