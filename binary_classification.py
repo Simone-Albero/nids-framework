@@ -177,13 +177,12 @@ def binary_classification():
 
     train = trainer.Trainer(model, criterion, optimizer)
 
-    # train.train(
-    #     n_epoch=N_EPOCH,
-    #     train_data_loader=train_dataloader,
-    #     epoch_steps=EPOCH_STEPS,
-    # )
-    # train.save_model_weights(f"saves/{WINDOW_SIZE}.pt")
-    train.load_model_weights(f"saves/{WINDOW_SIZE}.pt")
+    train.train(
+        n_epoch=N_EPOCH,
+        train_data_loader=train_dataloader,
+        epoch_steps=EPOCH_STEPS,
+    )
+    train.save_model_weights(f"saves/{WINDOW_SIZE}.pt")
 
     metric = metrics.BinaryClassificationMetric()
     train.test(test_dataloader, metric)
