@@ -186,7 +186,12 @@ class Trainer:
     def save_model_weights(self, f_path: str = "saves/model.pt") -> None:
         logging.info("Saving model weights...")
         os.makedirs(os.path.dirname(f_path), exist_ok=True)
+
+        curr_device = next(self._model.parameters()).device
+        self._model.to('cpu')
         torch.save(self._model.state_dict(), f_path)
+        self._model.to(curr_device)
+
         logging.info("Done")
 
     def load_model_weights(self, f_path: str = "saves/model.pt") -> None:

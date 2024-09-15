@@ -44,7 +44,10 @@ class TransformerClassifier(nn.Module):
     def forward(self, x) -> torch.Tensor:
         x = self.embedding(x)
         x = self.encoder(x)
-        x = self.pooling(x.permute(0, 2, 1)).squeeze(-1)  # (batch_size, embed_dim)
+
+        # Pooling operation: (batch_size, seq_len, embed_dim) -> (batch_size, embed_dim)
+        x = self.pooling(x.permute(0, 2, 1)).squeeze(-1)
+        
         x = self.dropout(x)
         x = self.classifier(x)  # (batch_size, num_classes)
 
