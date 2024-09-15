@@ -250,6 +250,8 @@ def self_supervised_classification():
     )
 
     train = trainer.Trainer(model, criterion, optimizer)
+    train.set_model(model)
+    
     train.train(
         n_epoch=1,
         train_data_loader=train_dataloader,

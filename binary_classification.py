@@ -149,8 +149,7 @@ def binary_classification():
 
     input_shape = next(iter(train_dataloader))[0].shape[-1]
 
-    model = transformer.TransformerClassifier(
-        num_classes=1,
+    model = transformer.TransformerBinaryClassifier(
         input_dim=input_shape,
         embed_dim=EMBED_DIM,
         num_heads=NUM_HEADS,
@@ -174,13 +173,15 @@ def binary_classification():
         weight_decay=WHIGHT_DECAY,
     )
 
-    train = trainer.Trainer(model, criterion, optimizer)
+    train = trainer.Trainer(criterion, optimizer)
+    train.set_model(model)
+
     train.train(
         n_epoch=N_EPOCH,
         train_data_loader=train_dataloader,
         epoch_steps=EPOCH_STEPS,
     )
-    train.save_model(f"saves/s{WINDOW_SIZE}.pt")
+    train.save_model(f"saves/{WINDOW_SIZE}.pt")
 
     metric = metrics.BinaryClassificationMetric()
     train.test(test_dataloader, metric)

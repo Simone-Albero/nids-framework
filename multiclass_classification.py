@@ -147,7 +147,7 @@ def multiclass_classification():
     input_shape = next(iter(train_dataloader))[0].shape[-1]
     num_classes = len(class_mapping)
 
-    model = transformer.TransformerClassifier(
+    model = transformer.TransformerMulticlassClassifier(
         num_classes=num_classes,
         input_dim=input_shape,
         embed_dim=EMBED_DIM,
@@ -173,6 +173,8 @@ def multiclass_classification():
     )
 
     train = trainer.Trainer(model, criterion, optimizer)
+    train.set_model(model)
+    
     train.train(
         n_epoch=N_EPOCH,
         train_data_loader=train_dataloader,
