@@ -1,4 +1,5 @@
 import logging
+import pickle
 
 import pandas as pd
 from rich.logging import RichHandler
@@ -54,6 +55,9 @@ def binary_classification():
 
     min_values, max_values = utilities.min_max_values(df_train, prop, BOUND)
     unique_values = utilities.unique_values(df_train, prop, CATEGORICAL_LEV)
+
+    with open('datasets/NF-ToN-IoT-V2/train_meta.pkl', 'wb') as f:
+        pickle.dump((min_values, max_values, unique_values), f)
 
     @trans_builder.add_step(order=1)
     def base_pre_processing(dataset, properties):
