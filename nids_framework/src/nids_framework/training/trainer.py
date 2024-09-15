@@ -73,10 +73,11 @@ class Trainer:
 
     def __init__(
         self,
+        model: nn.Module,
         criterion: _Loss = None,
         optimizer: Optimizer = None,
     ) -> None:
-        self._model: nn.Module = None
+        self._model = model
         self._criterion = criterion
         self._optimizer = optimizer
 
@@ -182,13 +183,13 @@ class Trainer:
     def set_model(self, model: nn.Module) -> None:
         self._model = model
 
-    def save_model(self, f_path: str = "saves/model.pt") -> None:
-        logging.info("Saving model...")
+    def save_model_weights(self, f_path: str = "saves/model.pt") -> None:
+        logging.info("Saving model weights...")
         os.makedirs(os.path.dirname(f_path), exist_ok=True)
-        torch.save(self._model, f_path)
+        torch.save(self._model.state_dict(), f_path)
         logging.info("Done")
 
-    def load_model(self, f_path: str = "saves/model.pt") -> None:
-        logging.info("Loading model...")
-        self._model = torch.load(f_path)
+    def load_model_weights(self, f_path: str = "saves/model.pt") -> None:
+        logging.info("Loading model weights...")
+        self._model.load_state_dict(torch.load(f_path))
         logging.info("Done")

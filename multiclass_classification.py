@@ -144,12 +144,14 @@ def multiclass_classification():
         shuffle=False,
     )
 
-    input_shape = next(iter(train_dataloader))[0].shape[-1]
+    input_dim = next(iter(train_dataloader))[0].shape[-1]
+    logging.info(f"Input dim: {input_dim}")
+
     num_classes = len(class_mapping)
 
-    model = transformer.TransformerMulticlassClassifier(
+    model = transformer.TransformerClassifier(
         num_classes=num_classes,
-        input_dim=input_shape,
+        input_dim=input_dim,
         embed_dim=EMBED_DIM,
         num_heads=NUM_HEADS,
         num_layers=NUM_LAYERS,
@@ -173,14 +175,12 @@ def multiclass_classification():
     )
 
     train = trainer.Trainer(model, criterion, optimizer)
-    train.set_model(model)
-    
     train.train(
         n_epoch=N_EPOCH,
         train_data_loader=train_dataloader,
         epoch_steps=EPOCH_STEPS,
     )
-    train.save_model(f"saves/s{WINDOW_SIZE}.pt")
+    train.save_model_weights(f"saves/s{WINDOW_SIZE}.pt")
 
     metric = metrics.MulticlassClassificationMetric(num_classes)
     train.test(test_dataloader, metric)
