@@ -191,5 +191,5 @@ class Trainer:
 
     def load_model_weights(self, f_path: str = "saves/model.pt") -> None:
         logging.info("Loading model weights...")
-        self._model.load_state_dict(torch.load(f_path))
+        self._model.load_state_dict(torch.load(f_path), weights_only=True)
         logging.info("Done")
