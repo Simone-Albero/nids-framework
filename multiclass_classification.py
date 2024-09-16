@@ -31,7 +31,7 @@ def multiclass_classification():
     EMBED_DIM = 256
     NUM_HEADS = 2
     NUM_LAYERS = 4
-    DROPUT = 0.1
+    DROPOUT = 0.1
     FF_DIM = 128
     LR = 0.0005
     WHIGHT_DECAY = 0.001
@@ -156,7 +156,7 @@ def multiclass_classification():
         num_heads=NUM_HEADS,
         num_layers=NUM_LAYERS,
         ff_dim=FF_DIM,
-        dropout=DROPUT
+        dropout=DROPOUT
     ).to(device)
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)

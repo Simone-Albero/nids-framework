@@ -34,7 +34,7 @@ def binary_classification():
     EMBED_DIM = 256
     NUM_HEADS = 2
     NUM_LAYERS = 4
-    DROPUT = 0.1
+    DROPOUT = 0.1
     FF_DIM = 128
     LR = 0.0005
     WHIGHT_DECAY = 0.001
@@ -74,8 +74,8 @@ def binary_classification():
         )
 
     @trans_builder.add_step(order=4)
-    def bynary_label_conversion(dataset, properties):
-        utilities.bynary_label_conversion(dataset, properties)
+    def binary_label_conversion(dataset, properties):
+        utilities.binary_label_conversion(dataset, properties)
 
     transformations = trans_builder.build()
 
@@ -157,7 +157,7 @@ def binary_classification():
         num_heads=NUM_HEADS,
         num_layers=NUM_LAYERS,
         ff_dim=FF_DIM,
-        dropout=DROPUT
+        dropout=DROPOUT
     ).to(device)
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)

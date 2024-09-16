@@ -102,7 +102,7 @@ def categorical_pre_processing(
         dataset[col] = dataset[col].apply(lambda x: value_map.get(x, -1) + 1)
 
 
-def bynary_label_conversion(
+def binary_label_conversion(
     dataset: pd.DataFrame,
     properties: DatasetProperties,
 ) -> None:
