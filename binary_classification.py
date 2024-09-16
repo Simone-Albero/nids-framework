@@ -26,7 +26,7 @@ def binary_classification():
     TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
     TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
 
-    CATEGORICAL_LEV = 32
+    CATEGORICAL_LEVEL = 32
     BOUND = 100000000
 
     BATCH_SIZE = 64
@@ -54,40 +54,36 @@ def binary_classification():
     trans_builder = transformation_builder.TransformationBuilder()
 
     min_values, max_values = utilities.min_max_values(df_train, prop, BOUND)
-    unique_values = utilities.unique_values(df_train, prop, CATEGORICAL_LEV)
+    unique_values = utilities.unique_values(df_train, prop, CATEGORICAL_LEVEL)
 
     with open('datasets/NF-ToN-IoT-V2/train_meta.pkl', 'wb') as f:
         pickle.dump((min_values, max_values, unique_values), f)
 
     @trans_builder.add_step(order=1)
-    def base_pre_processing(dataset, properties):
-        utilities.base_pre_processing(dataset, properties, BOUND)
+    def base_pre_processing(dataset):
+        return utilities.base_pre_processing(dataset, prop, BOUND)
 
     @trans_builder.add_step(order=2)
-    def log_pre_processing(dataset, properties):
-        utilities.log_pre_processing(dataset, properties, min_values, max_values)
+    def log_pre_processing(dataset):
+        return utilities.log_pre_processing(dataset, prop, min_values, max_values)
 
     @trans_builder.add_step(order=3)
-    def categorical_conversion(dataset, properties):
-        utilities.categorical_pre_processing(
-            dataset, properties, unique_values, CATEGORICAL_LEV
-        )
+    def categorical_conversion(dataset):
+        return utilities.categorical_pre_processing(dataset, prop, unique_values, CATEGORICAL_LEVEL)
 
     @trans_builder.add_step(order=4)
-    def binary_label_conversion(dataset, properties):
-        utilities.binary_label_conversion(dataset, properties)
+    def binary_label_conversion(dataset):
+        return utilities.binary_label_conversion(dataset, prop)
+    
+    @trans_builder.add_step(order=5)
+    def split_data_for_torch(dataset):
+        return utilities.split_data_for_torch(dataset, prop)
 
     transformations = trans_builder.build()
 
-    proc = processor.Processor(df_train, prop)
-    proc.transformations = transformations
-    proc.apply()
-    X_train, y_train = proc.build()
-
-    proc = processor.Processor(df_test, prop)
-    proc.transformations = transformations
-    proc.apply()
-    X_test, y_test = proc.build()
+    proc = processor.Processor(transformations)
+    X_train, y_train = proc.apply(df_train)
+    X_test, y_test = proc.apply(df_test)
 
 
     device = "cpu"
@@ -111,7 +107,7 @@ def binary_classification():
     )
 
     @trans_builder.add_step(order=1)
-    def categorical_one_hot(sample, categorical_levels=CATEGORICAL_LEV):
+    def categorical_one_hot(sample, categorical_levels=CATEGORICAL_LEVEL):
         return utilities.one_hot_encoding(sample, categorical_levels)
 
     transformations = trans_builder.build()

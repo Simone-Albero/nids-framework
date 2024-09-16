@@ -4,17 +4,17 @@ import pandas as pd
 import numpy as np
 import torch
 
-from .processor import DatasetProperties
+from .properties import DatasetProperties
 
 
 def min_max_values(
-    dataset: pd.DataFrame, properties: DatasetProperties, bound: int = np.inf
+    df: pd.DataFrame, properties: DatasetProperties, bound: int = np.inf
 ) -> tuple[dict[str, float], dict[str, float]]:
     min_values = {}
     max_values = {}
 
     for col in properties.numeric_features:
-        column_values = dataset[col].values
+        column_values = df[col].values
         min_value = np.min(column_values)
         max_value = np.max(column_values)
 
@@ -25,25 +25,25 @@ def min_max_values(
 
 
 def unique_values(
-    dataset: pd.DataFrame, properties: DatasetProperties, categorical_levels: int
+    df: pd.DataFrame, properties: DatasetProperties, categorical_levels: int
 ) -> dict[str, list[any]]:
     unique_values = {}
 
     for col in properties.categorical_features:
-        uniques = dataset[col].value_counts().index[: (categorical_levels - 1)].tolist()
+        uniques = df[col].value_counts().index[: (categorical_levels - 1)].tolist()
         unique_values[col] = uniques
 
     return unique_values
 
 
 def labels_mapping(
-    dataset: pd.DataFrame, properties: DatasetProperties
+    df: pd.DataFrame, properties: DatasetProperties
 ) -> tuple[dict[any, int], dict[int, any]]:
     logging.debug("Mapping class labels to numeric values...")
     mapping = {}
     reverse = {}
 
-    for idx, label in enumerate(dataset[properties.labels].unique()):
+    for idx, label in enumerate(df[properties.labels].unique()):
         mapping[label] = idx
         reverse[idx] = label
 
@@ -51,76 +51,108 @@ def labels_mapping(
 
 
 def base_pre_processing(
-    dataset: pd.DataFrame,
+    df: pd.DataFrame,
     properties: DatasetProperties,
     bound: int,
-) -> None:
+) -> pd.DataFrame:
     logging.debug(f"Bounding numeric features to {bound}...")
+
+    df_copy = df.copy()
+    
     for col in properties.numeric_features:
-        column_values = dataset[col].values
-        column_values[~np.isfinite(column_values)] = 0
-        column_values[column_values < -bound] = -bound
-        column_values[column_values > bound] = bound
-        dataset[col] = column_values.astype("float32")
+        column_values = df_copy[col]
+        column_values.replace([np.inf, -np.inf, np.nan], 0, inplace=True)
+        column_values.clip(lower=-bound, upper=bound, inplace=True)
+        df_copy[col] = column_values.astype("float32")
+    
+    return df_copy
 
 
 def log_pre_processing(
-    dataset: pd.DataFrame,
+    df: pd.DataFrame,
     properties: DatasetProperties,
     min_values: dict[str, float],
     max_values: dict[str, float],
-) -> None:
+) -> pd.DataFrame:
     logging.debug("Normalizing numeric features with Log...")
+    
+    df_copy = df.copy()
+    
     for col in properties.numeric_features:
-        column_values = dataset[col].values
-        min_value, max_value = min_values[col], max_values[col]
+        min_value = min_values[col]
+        max_value = max_values[col]
         gap = max_value - min_value
-
+        
         if gap == 0:
-            dataset[col] = np.zeros_like(column_values, dtype="float32")
+            df_copy[col] = 0.0
         else:
+            column_values = df_copy[col]
+            column_values.replace([np.inf, -np.inf, np.nan], 0, inplace=True)
             column_values -= min_value
-            column_values = np.maximum(column_values, 0)  # maybe not fair
+            column_values = np.maximum(column_values, 0)
             column_values = np.log(column_values + 1)
-            column_values *= 1.0 / np.log(gap + 1)
-            dataset[col] = column_values
+            normalization_factor = 1.0 / np.log(gap + 1)
+            df_copy[col] = column_values * normalization_factor
+    
+    return df_copy
 
 
 def categorical_pre_processing(
-    dataset: pd.DataFrame,
+    df: pd.DataFrame,
     properties: DatasetProperties,
     unique_values: dict[str, list[any]],
     categorical_levels: int,
-) -> None:
+) -> pd.DataFrame:
     logging.debug(
         f"Mapping {len(properties.categorical_features)} categorical features to {categorical_levels} numeric tags..."
     )
-
+    
+    df_copy = df.copy()
+    
     for col in properties.categorical_features:
-        value_map = {val: idx for idx, val in enumerate(unique_values[col])}
-
-        dataset[col] = dataset[col].apply(lambda x: value_map.get(x, -1) + 1)
+        value_map = {val: idx + 1 for idx, val in enumerate(unique_values[col])}
+        df_copy[col] = df_copy[col].map(value_map).fillna(0).astype(int)
+    
+    return df_copy
 
 
 def binary_label_conversion(
-    dataset: pd.DataFrame,
+    df: pd.DataFrame,
     properties: DatasetProperties,
-) -> None:
+) -> pd.DataFrame:
     logging.debug("Converting class labels to numeric values...")
-    dataset[properties.labels] = ~(
-        dataset[properties.labels].astype("str") == properties.benign_label
+    
+    df_copy = df.copy()
+    
+    df_copy[properties.labels] = ~(
+        df_copy[properties.labels].astype("str") == properties.benign_label
     )
+    
+    return df_copy
 
 
 def multi_class_label_conversion(
-    dataset: pd.DataFrame,
+    df: pd.DataFrame,
     properties: DatasetProperties,
     mapping: dict[any, int],
-) -> None:
+) -> pd.DataFrame:
     logging.debug("Converting class labels to numeric values...")
-    dataset[properties.labels] = dataset[properties.labels].apply(
-        lambda x: mapping.get(x)
-    )
+    
+    df_copy = df.copy()
+    df_copy[properties.labels] = df_copy[properties.labels].map(mapping).fillna(-1).astype(int)
+    
+    return df_copy
+
+def split_data_for_torch(
+    df: pd.DataFrame,
+    properties: DatasetProperties,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    logging.debug("Extracting features and labels for Torch...")
+
+    features_df = df[properties.features]
+    labels_df = df[properties.labels]
+    
+    return features_df, labels_df
 
 
 def log_transformation(

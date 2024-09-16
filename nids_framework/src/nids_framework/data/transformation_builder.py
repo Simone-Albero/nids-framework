@@ -10,7 +10,7 @@ class TransformationBuilder:
 
     def __init__(self) -> None:
         self._transformations: list[callable] = []
-
+    
     def add_step(self, order: int) -> callable:
         def decorator(func: callable) -> callable:
             @functools.wraps(func)
