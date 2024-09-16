@@ -50,24 +50,22 @@ class TabularDataset(Dataset):
         return len(self._target)
 
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
-        numeric_sample = {"data": self._numeric_data[idx]}
+        numeric = self._numeric_data[idx]
         if self._numeric_transformation:
-            numeric_sample = self._numeric_transformation(numeric_sample)
+            numeric = self._numeric_transformation(numeric)
 
-        categorical_sample = {"data": self._categorical_data[idx]}
+        categorical = self._categorical_data[idx]
         if self._categorical_transformation:
-            categorical_sample = self._categorical_transformation(categorical_sample)
+            categorical = self._categorical_transformation(categorical)
 
-        target_sample = {"data": self._target[idx]}
+        target = self._target[idx]
         if self._target_transformation:
-            target_sample = self._target_transformation(target_sample)
+            target = self._target_transformation(target)
 
-        categorical_sample["data"] = categorical_sample["data"].float()
-        features = torch.cat(
-            (numeric_sample["data"], categorical_sample["data"]), dim=-1
-        )
+        categorical = categorical.float()
+        features = torch.cat((numeric, categorical), dim=-1)
 
-        return features, target_sample["data"][..., -1]
+        return features, target[..., -1]
 
     def set_numeric_transformation(self, transformations: list[callable]) -> None:
         self._numeric_transformation = Compose(transformations)
@@ -111,22 +109,20 @@ class TabularReconstructionDataset(Dataset):
         return len(self._numeric_data)
 
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
-        numeric_sample = {"data": self._numeric_data[idx]}
+        numeric = self._numeric_data[idx]
         if self._numeric_transformation:
-            numeric_sample = self._numeric_transformation(numeric_sample)
+            numeric = self._numeric_transformation(numeric)
 
-        categorical_sample = {"data": self._categorical_data[idx]}
+        categorical = self._categorical_data[idx]
         if self._categorical_transformation:
-            categorical_sample = self._categorical_transformation(categorical_sample)
+            categorical = self._categorical_transformation(categorical)
 
-        categorical_sample["data"] = categorical_sample["data"].float()
-        originial_features = torch.cat(
-            (numeric_sample["data"], categorical_sample["data"]), dim=-1
-        )
+        categorical = categorical.float()
+        originial_features = torch.cat((numeric, categorical), dim=-1)
 
-        original_sample = {"data": originial_features}
+        masked_features = originial_features
         if self._masking_transformation:
-            masked_features = self._masking_transformation(original_sample)["data"]
+            masked_features = self._masking_transformation(masked_features)
 
         return masked_features, originial_features
 

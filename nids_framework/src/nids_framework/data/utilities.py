@@ -156,61 +156,51 @@ def split_data_for_torch(
 
 
 def log_transformation(
-    sample: dict[str, any], min_values: torch.Tensor, max_values: torch.Tensor
-) -> dict[str, any]:
-    features = sample["data"]
+    tensor: torch.Tensor, min_values: torch.Tensor, max_values: torch.Tensor
+) -> torch.Tensor:
     gaps = max_values - min_values
 
     mask = gaps != 0
 
-    features_transformed = torch.zeros_like(features)
-    features_transformed[mask] = torch.log(features[mask] + 1) / torch.log(
+    transformed_tensor = torch.zeros_like(tensor)
+    transformed_tensor[mask] = torch.log(tensor[mask] + 1) / torch.log(
         gaps[mask] + 1
     )
 
-    sample["data"] = features_transformed
-    return sample
+    return transformed_tensor
 
 
 def categorical_value_encoding(
-    sample: dict[str, any], categorical_levels: torch.Tensor, categorical_bound: int
-) -> dict[str, any]:
-    features = sample["data"]
+    tensor: torch.Tensor, categorical_levels: torch.Tensor, categorical_bound: int
+) -> torch.Tensor:
     categorical_levels = categorical_levels[:, : (categorical_bound - 1)]
 
-    value_encoding = torch.zeros_like(features, dtype=torch.long)
-    for col_idx in range(features.size(1)):
-        col_values = features[:, col_idx].unsqueeze(1)  # Shape (N, 1)
+    transformed_tensor = torch.zeros_like(tensor, dtype=torch.long)
+    for col_idx in range(tensor.size(1)):
+        col_values = tensor[:, col_idx].unsqueeze(1)  # Shape (N, 1)
         cat_col_levels = categorical_levels[:, col_idx].unsqueeze(0)  # Shape (1, L)
         mask = col_values == cat_col_levels  # Shape (N, L)
 
         encoded_indices = (
-            mask.nonzero(as_tuple=True)[1].reshape(-1, features.size(0)).t() + 1
+            mask.nonzero(as_tuple=True)[1].reshape(-1, tensor.size(0)).t() + 1
         )
-        value_encoding[:, col_idx] = encoded_indices.squeeze()
+        transformed_tensor[:, col_idx] = encoded_indices.squeeze()
 
-    sample["data"] = value_encoding
-    return sample
+    return transformed_tensor
 
 
-def one_hot_encoding(sample: dict[str, any], levels: int) -> dict[str, any]:
-    features = sample["data"]
-    one_hot = torch.nn.functional.one_hot(features, num_classes=levels)
+def one_hot_encoding(tensor: torch.Tensor, levels: int) -> torch.Tensor:
+    one_hot = torch.nn.functional.one_hot(tensor, num_classes=levels)
 
     if len(one_hot.shape) == 2:
-        sample["data"] = one_hot.flatten()
+        return one_hot.flatten()
     elif len(one_hot.shape) > 2:
-        sample["data"] = one_hot.view(one_hot.size(0), -1)
-
-    return sample
+        return one_hot.view(one_hot.size(0), -1)
 
 
 def mask_features(
-    sample: dict[str, any], mask_prob: float = 0.1, mask_value: any = 0.0
-) -> dict[str, any]:
-    data = sample["data"]
-    mask = torch.rand(data.shape, device=data.device) < mask_prob
-
-    data = torch.where(mask, torch.tensor(mask_value, device=data.device), data)
-    sample["data"] = data
-    return sample
+    tensor: torch.Tensor, mask_prob: float = 0.1, mask_value: any = 0.0
+) -> torch.Tensor:
+    mask = torch.rand(tensor.shape, device=tensor.device) < mask_prob
+    
+    return torch.where(mask, torch.tensor(mask_value, device=tensor.device), tensor)
