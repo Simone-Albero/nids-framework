@@ -2,7 +2,17 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+class AttentionPooling(nn.Module):
+    def __init__(self, embed_dim):
+        super().__init__()
+        self.attention_weights = nn.Linear(embed_dim, 1)
 
+    def forward(self, x):
+        # x: (batch_size, seq_len, embed_dim)
+        attention_scores = F.softmax(self.attention_weights(x), dim=1)  # (batch_size, seq_len, 1)
+        x = torch.sum(attention_scores * x, dim=1)  # (batch_size, embed_dim)
+        return x
+    
 class TransformerClassifier(nn.Module):
 
     __slots__ = [
@@ -37,7 +47,11 @@ class TransformerClassifier(nn.Module):
         self.encoder: nn.Module = nn.TransformerEncoder(
             encoder_layer, num_layers=num_layers
         )
-        self.pooling: nn.Module = nn.AdaptiveAvgPool1d(1)
+        
+        self.pooling: nn.Module = nn.AdaptiveMaxPool1d(1)
+        #self.pooling: nn.Module = AttentionPooling(embed_dim)
+        #self.pooling: nn.Module = nn.AdaptiveAvgPool1d(1)
+
         self.classifier: nn.Module = nn.Linear(embed_dim, num_classes)
         self.dropout: nn.Module = nn.Dropout(dropout)
 
@@ -47,6 +61,7 @@ class TransformerClassifier(nn.Module):
 
         # Pooling operation: (batch_size, seq_len, embed_dim) -> (batch_size, embed_dim)
         x = self.pooling(x.permute(0, 2, 1)).squeeze(-1)
+        #x = self.pooling(x)
         
         x = self.dropout(x)
         x = self.classifier(x)  # (batch_size, num_classes)
