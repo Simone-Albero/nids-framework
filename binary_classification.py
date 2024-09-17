@@ -22,12 +22,8 @@ from nids_framework.training import trainer, metrics
 def binary_classification():
     CONFIG_PATH = "configs/dataset_properties.ini"
 
-    #DATASET_NAME = "nf_ton_iot_v2_binary_anonymous"
+    DATASET_NAME = "nf_ton_iot_v2_binary_anonymous"
     #DATASET_NAME = "nf_ton_iot_v2_binary_ddos"
-    #TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
-    #TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
-
-    DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
     TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
     TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
 
