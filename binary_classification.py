@@ -21,8 +21,13 @@ from nids_framework.training import trainer, metrics
 
 def binary_classification():
     CONFIG_PATH = "configs/dataset_properties.ini"
-    DATASET_NAME = "nf_ton_iot_v2_binary_anonymous"
-    # DATASET_NAME = "nf_ton_iot_v2_binary_ddos"
+
+    #DATASET_NAME = "nf_ton_iot_v2_binary_anonymous"
+    #DATASET_NAME = "nf_ton_iot_v2_binary_ddos"
+    #TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
+    #TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
+
+    DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
     TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
     TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
 
@@ -114,19 +119,19 @@ def binary_classification():
     train_dataset.set_categorical_transformation(transformations)
     test_dataset.set_categorical_transformation(transformations)
 
-    train_sampler = samplers.RandomSlidingWindowSampler(
-        train_dataset, window_size=WINDOW_SIZE
-    )
-    test_sampler = samplers.RandomSlidingWindowSampler(
-        test_dataset, window_size=WINDOW_SIZE
-    )
+    # train_sampler = samplers.RandomSlidingWindowSampler(
+    #     train_dataset, window_size=WINDOW_SIZE
+    # )
+    # test_sampler = samplers.RandomSlidingWindowSampler(
+    #     test_dataset, window_size=WINDOW_SIZE
+    # )
 
-    # train_sampler = samplers.GroupWindowSampler(
-    #     train_dataset, WINDOW_SIZE, df_train, "IPV4_SRC_ADDR"
-    # )
-    # test_sampler = samplers.GroupWindowSampler(
-    #     test_dataset, WINDOW_SIZE, df_test, "IPV4_SRC_ADDR"
-    # )
+    train_sampler = samplers.GroupWindowSampler(
+        train_dataset, WINDOW_SIZE, df_train, "IPV4_SRC_ADDR"
+    )
+    test_sampler = samplers.GroupWindowSampler(
+        test_dataset, WINDOW_SIZE, df_test, "IPV4_SRC_ADDR"
+    )
 
     train_dataloader = DataLoader(
         train_dataset,
@@ -182,19 +187,6 @@ def binary_classification():
 
     metric = metrics.BinaryClassificationMetric()
     train.test(test_dataloader, metric)
-
-def generate_train_test():
-    df_path = "dataset/NF-ToN-IoT-V2/NF-ToN-IoT-V2.csv"
-    df = pd.read_csv(df_path)
-
-    train_size = int(len(df) * 0.85)
-    test_size = len(df) - train_size
-
-    df_train = df.head(train_size)
-    df_test = df.tail(test_size)
-
-    df_train.to_csv("dataset/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv", index=False)
-    df_test.to_csv("dataset/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv", index=False)
 
 if __name__ == "__main__":
     debug_level = logging.INFO

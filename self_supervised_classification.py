@@ -261,20 +261,6 @@ def self_supervised_classification():
     metric = metrics.BinaryClassificationMetric()
     train.test(test_dataloader, metric)
 
-
-def generate_train_test():
-    df_path = "dataset/NF-ToN-IoT-V2/NF-ToN-IoT-V2.csv"
-    df = pd.read_csv(df_path)
-
-    train_size = int(len(df) * 0.85)
-    test_size = len(df) - train_size
-
-    df_train = df.head(train_size)
-    df_test = df.tail(test_size)
-
-    df_train.to_csv("dataset/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv", index=False)
-    df_test.to_csv("dataset/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv", index=False)
-
 if __name__ == "__main__":
     debug_level = logging.INFO
     logging.basicConfig(
