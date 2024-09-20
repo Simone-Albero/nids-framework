@@ -48,7 +48,7 @@ class TransformerClassifier(nn.Module):
             encoder_layer, num_layers=num_layers
         )
         
-        self.pooling: nn.Module = nn.AdaptiveMaxPool1d(1)
+        #self.pooling: nn.Module = nn.AdaptiveMaxPool1d(1)
         #self.pooling: nn.Module = AttentionPooling(embed_dim)
         #self.pooling: nn.Module = nn.AdaptiveAvgPool1d(1)
 
@@ -60,9 +60,10 @@ class TransformerClassifier(nn.Module):
         x = self.encoder(x)
 
         # Pooling operation: (batch_size, seq_len, embed_dim) -> (batch_size, embed_dim)
-        x = self.pooling(x.permute(0, 2, 1)).squeeze(-1)
+        #x = self.pooling(x.permute(0, 2, 1)).squeeze(-1)
         #x = self.pooling(x)
         
+        x = x[...,-1,:] # last token of the context window
         x = self.dropout(x)
         x = self.classifier(x)  # (batch_size, num_classes)
 
