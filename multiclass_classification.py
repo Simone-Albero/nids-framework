@@ -47,7 +47,7 @@ def multiclass_classification():
     prop = named_prop.get_properties(DATASET_NAME)
 
     df_train = pd.read_csv(TRAIN_PATH)
-    df_test = pd.read_csv(TEST_PATH)
+    df_test = pd.read_csv(TEST_PATH, nrows=100000)
 
     trans_builder = transformation_builder.TransformationBuilder()
 
@@ -180,7 +180,7 @@ def multiclass_classification():
         train_data_loader=train_dataloader,
         epoch_steps=EPOCH_STEPS,
     )
-    train.save_model_weights(f"saves/s{WINDOW_SIZE}.pt")
+    train.save_model_weights(f"saves/{WINDOW_SIZE}.pt")
 
     metric = metrics.MulticlassClassificationMetric(num_classes)
     train.test(test_dataloader, metric)

@@ -22,10 +22,13 @@ from nids_framework.training import trainer, metrics
 def binary_classification():
     CONFIG_PATH = "configs/dataset_properties.ini"
 
-    DATASET_NAME = "nf_ton_iot_v2_binary_anonymous"
-    #DATASET_NAME = "nf_ton_iot_v2_binary_ddos"
-    TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
-    TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
+    # DATASET_NAME = "nf_ton_iot_v2_binary_anonymous"
+    # TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
+    # TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
+
+    DATASET_NAME = "nf_unsw_nb15_v2_binary_anonymous"
+    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
+    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Test.csv"
 
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000
@@ -41,7 +44,7 @@ def binary_classification():
     WHIGHT_DECAY = 0.001
 
     N_EPOCH = 1
-    EPOCH_STEPS = 128 #500
+    EPOCH_STEPS = 128  # 500
     # EPOCH_UNTIL_VALIDATION = 100
     # PATIENCE = 2
     # DELTA = 0.01
@@ -57,7 +60,7 @@ def binary_classification():
     min_values, max_values = utilities.min_max_values(df_train, prop, BOUND)
     unique_values = utilities.unique_values(df_train, prop, CATEGORICAL_LEVEL)
 
-    with open('datasets/NF-ToN-IoT-V2/train_meta.pkl', 'wb') as f:
+    with open("datasets/NF-UNSW-NB15-V2/train_meta.pkl", "wb") as f:
         pickle.dump((min_values, max_values, unique_values), f)
 
     @trans_builder.add_step(order=1)
@@ -70,12 +73,14 @@ def binary_classification():
 
     @trans_builder.add_step(order=3)
     def categorical_conversion(dataset):
-        return utilities.categorical_pre_processing(dataset, prop, unique_values, CATEGORICAL_LEVEL)
+        return utilities.categorical_pre_processing(
+            dataset, prop, unique_values, CATEGORICAL_LEVEL
+        )
 
     @trans_builder.add_step(order=4)
     def binary_label_conversion(dataset):
         return utilities.binary_label_conversion(dataset, prop)
-    
+
     @trans_builder.add_step(order=5)
     def split_data_for_torch(dataset):
         return utilities.split_data_for_torch(dataset, prop)
@@ -85,7 +90,6 @@ def binary_classification():
     proc = processor.Processor(transformations)
     X_train, y_train = proc.apply(df_train)
     X_test, y_test = proc.apply(df_test)
-
 
     device = "cpu"
     if torch.cuda.is_available():
@@ -97,14 +101,11 @@ def binary_classification():
         X_train[prop.numeric_features],
         X_train[prop.categorical_features],
         y_train,
-        device
+        device,
     )
 
     test_dataset = tabular_datasets.TabularDataset(
-        X_test[prop.numeric_features], 
-        X_test[prop.categorical_features], 
-        y_test,
-        device
+        X_test[prop.numeric_features], X_test[prop.categorical_features], y_test, device
     )
 
     @trans_builder.add_step(order=1)
@@ -154,7 +155,7 @@ def binary_classification():
         num_heads=NUM_HEADS,
         num_layers=NUM_LAYERS,
         ff_dim=FF_DIM,
-        dropout=DROPOUT
+        dropout=DROPOUT,
     ).to(device)
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -165,7 +166,9 @@ def binary_classification():
     weights = weights / weights.sum()
     logging.info(f"weights: {weights}")
 
-    criterion = nn.BCELoss(weight=torch.tensor(weights, dtype=torch.float32, device=device)[1])
+    criterion = nn.BCELoss(
+        weight=torch.tensor(weights, dtype=torch.float32, device=device)[1]
+    )
     optimizer = optim.Adam(
         model.parameters(),
         lr=LR,
@@ -183,6 +186,7 @@ def binary_classification():
 
     metric = metrics.BinaryClassificationMetric()
     train.test(test_dataloader, metric)
+
 
 if __name__ == "__main__":
     debug_level = logging.INFO
