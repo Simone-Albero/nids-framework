@@ -27,14 +27,15 @@ def binary_classification():
     # TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
 
     DATASET_NAME = "nf_unsw_nb15_v2_binary_anonymous"
-    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
+    #TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
+    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Custom-Train.csv"
     # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Test.csv"
     TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Custom-Test.csv"
 
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000
 
-    BATCH_SIZE = 64
+    BATCH_SIZE = 32
     WINDOW_SIZE = 8
     EMBED_DIM = 256
     NUM_HEADS = 2
@@ -45,7 +46,7 @@ def binary_classification():
     WHIGHT_DECAY = 0.001
 
     N_EPOCH = 1
-    EPOCH_STEPS = 128  # 500
+    EPOCH_STEPS = 1000
     # EPOCH_UNTIL_VALIDATION = 100
     # PATIENCE = 2
     # DELTA = 0.01
@@ -84,7 +85,8 @@ def binary_classification():
 
     @trans_builder.add_step(order=4)
     def binary_label_conversion(dataset):
-        return utilities.binary_benign_label_conversion(dataset, prop)
+        #return utilities.binary_benign_label_conversion(dataset, prop)
+        return utilities.binary_label_conversion(dataset, prop)
 
     @trans_builder.add_step(order=5)
     def split_data_for_torch(dataset):
@@ -187,7 +189,7 @@ def binary_classification():
         train_data_loader=train_dataloader,
         epoch_steps=EPOCH_STEPS,
     )
-    train.save_model_weights(f"saves/{WINDOW_SIZE}.pt")
+    train.save_model_weights(f"saves/{prop.benign_label}.pt")
 
     metric = metrics.BinaryClassificationMetric()
     train.test(test_dataloader, metric)

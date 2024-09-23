@@ -165,14 +165,15 @@ def generate_custom_test():
 
     df = pd.read_csv(file_path)
     custom_df = pd.DataFrame()
-    attacks = ["Fuzzers", "Exploits", "Reconnaissance"]
+    attacks = ["Fuzzers", "Exploits", "DoS"]
     benign_rows = df[df["Attack"] == "Benign"]
     added_indices = set()
-    WINDOW = 4
+    WINDOW = 3
+    ATTACK_SAMPLES = 300
 
     for label in attacks:
         attack_mask = df[df["Attack"] == label]
-        attack_mask = attack_mask.iloc[:300, :]
+        attack_mask = attack_mask.iloc[:ATTACK_SAMPLES, :]
 
         for idx in attack_mask.index:
             custom_df = pd.concat((custom_df, df.loc[[idx]]), axis=0)
