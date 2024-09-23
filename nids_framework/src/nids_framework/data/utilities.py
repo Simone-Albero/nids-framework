@@ -188,7 +188,7 @@ def categorical_pre_processing_row(
     return row_copy
 
 
-def binary_label_conversion(
+def binary_benign_label_conversion(
     df: pd.DataFrame,
     properties: DatasetProperties,
 ) -> pd.DataFrame:
@@ -197,6 +197,20 @@ def binary_label_conversion(
     df_copy = df.copy()
 
     df_copy[properties.labels] = ~(
+        df_copy[properties.labels].astype("str") == properties.benign_label
+    )
+
+    return df_copy
+
+def binary_label_conversion(
+    df: pd.DataFrame,
+    properties: DatasetProperties,
+) -> pd.DataFrame:
+    logging.debug("Converting class labels to numeric values...")
+
+    df_copy = df.copy()
+
+    df_copy[properties.labels] = (
         df_copy[properties.labels].astype("str") == properties.benign_label
     )
 

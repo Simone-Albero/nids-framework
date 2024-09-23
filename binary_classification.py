@@ -22,13 +22,14 @@ from nids_framework.training import trainer, metrics
 def binary_classification():
     CONFIG_PATH = "configs/dataset_properties.ini"
 
-    DATASET_NAME = "nf_ton_iot_v2_binary_anonymous"
-    TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
-    TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
+    # DATASET_NAME = "nf_ton_iot_v2_binary_anonymous"
+    # TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
+    # TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
 
-    # DATASET_NAME = "nf_unsw_nb15_v2_binary_anonymous"
-    # TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
+    DATASET_NAME = "nf_unsw_nb15_v2_binary_anonymous"
+    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
     # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Test.csv"
+    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Custom-Test.csv"
 
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000
@@ -53,7 +54,11 @@ def binary_classification():
     prop = named_prop.get_properties(DATASET_NAME)
 
     df_train = pd.read_csv(TRAIN_PATH)
-    df_test = pd.read_csv(TEST_PATH, nrows=100000)
+    df_test = pd.read_csv(TEST_PATH, nrows=5000)
+    #df_test = df_test[df_test['Attack'].isin(["Benign", "Fuzzers", "Exploits", "Reconnaissance"])]
+
+    # print(df_test["Attack"].value_counts())
+    # exit(1)
 
     trans_builder = transformation_builder.TransformationBuilder()
 
@@ -79,7 +84,7 @@ def binary_classification():
 
     @trans_builder.add_step(order=4)
     def binary_label_conversion(dataset):
-        return utilities.binary_label_conversion(dataset, prop)
+        return utilities.binary_benign_label_conversion(dataset, prop)
 
     @trans_builder.add_step(order=5)
     def split_data_for_torch(dataset):
@@ -124,10 +129,10 @@ def binary_classification():
     # )
 
     train_sampler = samplers.GroupWindowSampler(
-        train_dataset, WINDOW_SIZE, df_train, "IPV4_SRC_ADDR"
+        train_dataset, WINDOW_SIZE, df_train, "IPV4_DST_ADDR"
     )
     test_sampler = samplers.GroupWindowSampler(
-        test_dataset, WINDOW_SIZE, df_test, "IPV4_SRC_ADDR"
+        test_dataset, WINDOW_SIZE, df_test, "IPV4_DST_ADDR"
     )
 
     train_dataloader = DataLoader(
@@ -167,7 +172,7 @@ def binary_classification():
     logging.info(f"weights: {weights}")
 
     criterion = nn.BCELoss(
-        weight=torch.tensor(weights, dtype=torch.float32, device=device)[1]
+        weight=torch.tensor(weights, dtype=torch.float32, device=device)[0]#[1]
     )
     optimizer = optim.Adam(
         model.parameters(),
