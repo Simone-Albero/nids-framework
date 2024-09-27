@@ -1,13 +1,14 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import Tensor
 
 class AttentionPooling(nn.Module):
-    def __init__(self, embed_dim):
+    def __init__(self, embed_dim: int) -> None:
         super().__init__()
         self.attention_weights = nn.Linear(embed_dim, 1)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         # x: (batch_size, seq_len, embed_dim)
         attention_scores = F.softmax(self.attention_weights(x), dim=1)  # (batch_size, seq_len, 1)
         x = torch.sum(attention_scores * x, dim=1)  # (batch_size, embed_dim)
@@ -55,7 +56,7 @@ class TransformerClassifier(nn.Module):
         self.classifier: nn.Module = nn.Linear(embed_dim, num_classes)
         self.dropout: nn.Module = nn.Dropout(dropout)
 
-    def forward(self, x) -> torch.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         x = self.embedding(x)
         x = self.encoder(x)
 
@@ -111,7 +112,7 @@ class TransformerAutoencoder(nn.Module):
         self.dropout: nn.Module = nn.Dropout(dropout)
         self.border: int = border
 
-    def forward(self, x) -> torch.Tensor:
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
         x = self.embedding(x)
         x = self.encoder(x)
         x = self.dropout(x)

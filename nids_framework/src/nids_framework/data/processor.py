@@ -1,4 +1,5 @@
 import logging
+from typing import Callable, Any, List
 
 
 class Processor:
@@ -7,10 +8,10 @@ class Processor:
         "_transformations",
     ]
 
-    def __init__(self, transformations: list[callable]) -> None:
+    def __init__(self, transformations: List[Callable[[Any], Any]]) -> None:
         self._transformations = transformations
 
-    def apply(self, data: any) -> None:
+    def apply(self, data: Any) -> Any:
         logging.info(f"Applying {len(self._transformations)} transformation...")
         for transform_function in self._transformations:
             try:

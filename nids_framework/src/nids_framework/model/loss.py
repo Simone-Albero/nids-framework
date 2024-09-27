@@ -7,15 +7,15 @@ class HybridReconstructionLoss(nn.Module):
 
     def __init__(self, border: int):
         super(HybridReconstructionLoss, self).__init__()
-        self._mse_loss: nn.Module = nn.MSELoss()
-        self._bce_loss: nn.Module = nn.BCEWithLogitsLoss()
-        self._border = border
+        self._mse_loss: nn.MSELoss = nn.MSELoss()
+        self._bce_loss: nn.BCEWithLogitsLoss = nn.BCEWithLogitsLoss()
+        self._border: int = border
 
     def forward(
         self,
-        reconstructed: torch.Tensor,
+        reconstructed: tuple[torch.Tensor, torch.Tensor],
         original: torch.Tensor,
-    ) -> float:
+    ) -> torch.Tensor:
         reconstructed_numeric, reconstructed_categorical = reconstructed
 
         # Loss for numeric features (MSE)

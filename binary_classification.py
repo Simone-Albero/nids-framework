@@ -56,7 +56,6 @@ def binary_classification():
 
     df_train = pd.read_csv(TRAIN_PATH)
     df_test = pd.read_csv(TEST_PATH, nrows=5000)
-    #df_test = df_test[df_test['Attack'].isin(["Benign", "Fuzzers", "Exploits", "Reconnaissance"])]
 
     # print(df_test["Attack"].value_counts())
     # exit(1)
@@ -85,8 +84,8 @@ def binary_classification():
 
     @trans_builder.add_step(order=4)
     def binary_label_conversion(dataset):
-        #return utilities.binary_benign_label_conversion(dataset, prop)
-        return utilities.binary_label_conversion(dataset, prop)
+        return utilities.binary_benign_label_conversion(dataset, prop)
+        #return utilities.binary_label_conversion(dataset, prop)
 
     @trans_builder.add_step(order=5)
     def split_data_for_torch(dataset):
@@ -152,7 +151,7 @@ def binary_classification():
         shuffle=False,
     )
 
-    input_dim = next(iter(train_dataloader))[0].shape[-1]
+    input_dim = next(iter(train_dataloader))[0  ].shape[-1]
     logging.info(f"Input dim: {input_dim}")
 
     model = transformer.TransformerClassifier(
@@ -190,6 +189,118 @@ def binary_classification():
         epoch_steps=EPOCH_STEPS,
     )
     train.save_model_weights(f"saves/{prop.benign_label}.pt")
+
+    metric = metrics.BinaryClassificationMetric()
+    train.test(test_dataloader, metric)
+
+def basic_test():
+    CONFIG_PATH = "configs/dataset_properties.ini"
+    DATASET_NAME = "nf_unsw_nb15_v2_binary_anonymous"
+    # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Test.csv"
+    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Custom-Test.csv"
+
+    CATEGORICAL_LEVEL = 32
+    BOUND = 100000000
+
+    BATCH_SIZE = 32
+    WINDOW_SIZE = 8
+    EMBED_DIM = 256
+    NUM_HEADS = 2
+    NUM_LAYERS = 4
+    DROPOUT = 0.1
+    FF_DIM = 128
+    LR = 0.0005
+    WHIGHT_DECAY = 0.001
+
+    named_prop = properties.NamedDatasetProperties(CONFIG_PATH)
+    prop = named_prop.get_properties(DATASET_NAME)
+    df_test = pd.read_csv(TEST_PATH, nrows=5000)
+
+    trans_builder = transformation_builder.TransformationBuilder()
+
+    with open("datasets/NF-UNSW-NB15-V2/train_meta.pkl", "rb") as f:
+        min_values, max_values, unique_values = pickle.load(f)
+
+    @trans_builder.add_step(order=1)
+    def base_pre_processing(dataset):
+        return utilities.base_pre_processing(dataset, prop, BOUND)
+
+    @trans_builder.add_step(order=2)
+    def log_pre_processing(dataset):
+        return utilities.log_pre_processing(dataset, prop, min_values, max_values)
+
+    @trans_builder.add_step(order=3)
+    def categorical_conversion(dataset):
+        return utilities.categorical_pre_processing(
+            dataset, prop, unique_values, CATEGORICAL_LEVEL
+        )
+
+    @trans_builder.add_step(order=4)
+    def binary_label_conversion(dataset):
+        return utilities.binary_benign_label_conversion(dataset, prop)
+        #return utilities.binary_label_conversion(dataset, prop)
+
+    @trans_builder.add_step(order=5)
+    def split_data_for_torch(dataset):
+        return utilities.split_data_for_torch(dataset, prop)
+
+    transformations = trans_builder.build()
+
+    proc = processor.Processor(transformations)
+    X_test, y_test = proc.apply(df_test)
+
+    device = "cpu"
+    if torch.cuda.is_available():
+        device = "cuda"
+    elif torch.backends.mps.is_available():
+        device = "mps"
+
+    test_dataset = tabular_datasets.TabularDataset(
+        X_test[prop.numeric_features], X_test[prop.categorical_features], y_test, device
+    )
+
+    @trans_builder.add_step(order=1)
+    def categorical_one_hot(sample, categorical_levels=CATEGORICAL_LEVEL):
+        return utilities.one_hot_encoding(sample, categorical_levels)
+
+    transformations = trans_builder.build()
+    test_dataset.set_categorical_transformation(transformations)
+
+    # test_sampler = samplers.RandomSlidingWindowSampler(
+    #     test_dataset, window_size=WINDOW_SIZE
+    # )
+
+    test_sampler = samplers.GroupWindowSampler(
+        test_dataset, WINDOW_SIZE, df_test, "IPV4_DST_ADDR"
+    )
+
+    test_dataloader = DataLoader(
+        test_dataset,
+        batch_size=BATCH_SIZE,
+        sampler=test_sampler,
+        drop_last=True,
+        shuffle=False,
+    )
+
+    input_dim = next(iter(test_dataloader))[0  ].shape[-1]
+    logging.info(f"Input dim: {input_dim}")
+
+    model = transformer.TransformerClassifier(
+        num_classes=1,
+        input_dim=input_dim,
+        embed_dim=EMBED_DIM,
+        num_heads=NUM_HEADS,
+        num_layers=NUM_LAYERS,
+        ff_dim=FF_DIM,
+        dropout=DROPOUT,
+    ).to(device)
+
+    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    logging.info(f"Total number of parameters: {total_params}")
+
+    criterion = nn.BCELoss()
+
+    train = trainer.Trainer(model, criterion)
 
     metric = metrics.BinaryClassificationMetric()
     train.test(test_dataloader, metric)

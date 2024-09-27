@@ -2,6 +2,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 from torchvision.transforms import Compose
+from typing import Callable, List, Optional, Tuple
 
 
 class TabularDataset(Dataset):
@@ -42,14 +43,14 @@ class TabularDataset(Dataset):
         else:
             raise ValueError("classification_type must be 'binary' or 'multiclass'")
 
-        self._numeric_transformation: Compose = None
-        self._categorical_transformation: Compose = None
-        self._target_transformation: Compose = None
+        self._numeric_transformation: Optional[Compose] = None
+        self._categorical_transformation: Optional[Compose] = None
+        self._target_transformation: Optional[Compose] = None
 
     def __len__(self) -> int:
         return len(self._target)
 
-    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         numeric = self._numeric_data[idx]
         if self._numeric_transformation:
             numeric = self._numeric_transformation(numeric)
@@ -67,13 +68,13 @@ class TabularDataset(Dataset):
 
         return features, target[..., -1]
 
-    def set_numeric_transformation(self, transformations: list[callable]) -> None:
+    def set_numeric_transformation(self, transformations: List[Callable]) -> None:
         self._numeric_transformation = Compose(transformations)
 
-    def set_categorical_transformation(self, transformations: list[callable]) -> None:
+    def set_categorical_transformation(self, transformations: List[Callable]) -> None:
         self._categorical_transformation = Compose(transformations)
 
-    def set_target_transformation(self, transformations: list[callable]) -> None:
+    def set_target_transformation(self, transformations: List[Callable]) -> None:
         self._target_transformation = Compose(transformations)
 
 
@@ -101,14 +102,14 @@ class TabularReconstructionDataset(Dataset):
             categorical_data.values, dtype=torch.long, device=device
         )
 
-        self._numeric_transformation: Compose = None
-        self._categorical_transformation: Compose = None
-        self._masking_transformation: Compose = None
+        self._numeric_transformation: Optional[Compose] = None
+        self._categorical_transformation: Optional[Compose] = None
+        self._masking_transformation: Optional[Compose] = None
 
     def __len__(self) -> int:
         return len(self._numeric_data)
 
-    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         numeric = self._numeric_data[idx]
         if self._numeric_transformation:
             numeric = self._numeric_transformation(numeric)
@@ -126,13 +127,13 @@ class TabularReconstructionDataset(Dataset):
 
         return masked_features, originial_features
 
-    def set_numeric_transformation(self, transformations: list[callable]) -> None:
+    def set_numeric_transformation(self, transformations: List[Callable]) -> None:
         self._numeric_transformation = Compose(transformations)
 
-    def set_categorical_transformation(self, transformations: list[callable]) -> None:
+    def set_categorical_transformation(self, transformations: List[Callable]) -> None:
         self._categorical_transformation = Compose(transformations)
 
-    def set_masking_transformation(self, transformations: list[callable]) -> None:
+    def set_masking_transformation(self, transformations: List[Callable]) -> None:
         self._masking_transformation = Compose(transformations)
 
     def get_border(self) -> int:

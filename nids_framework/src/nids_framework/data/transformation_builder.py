@@ -1,5 +1,6 @@
 import logging
 import functools
+from typing import Callable, List
 
 
 class TransformationBuilder:
@@ -9,10 +10,10 @@ class TransformationBuilder:
     ]
 
     def __init__(self) -> None:
-        self._transformations: list[callable] = []
+        self._transformations: List[Callable] = []
     
-    def add_step(self, order: int) -> callable:
-        def decorator(func: callable) -> callable:
+    def add_step(self, order: int) -> Callable:
+        def decorator(func: Callable) -> Callable:
             @functools.wraps(func)
             def wrapper(*args, **kwargs):
                 return func(*args, **kwargs)
@@ -29,7 +30,7 @@ class TransformationBuilder:
 
         return decorator
 
-    def build(self) -> list[callable]:
+    def build(self) -> List[Callable]:
         transformations = sorted(
             self._transformations,
             key=lambda transform_function: transform_function.order,

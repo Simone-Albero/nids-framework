@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Optional, Tuple
 
 import numpy as np
 from tqdm import tqdm
@@ -25,14 +26,14 @@ class EarlyStopping:
     ]
 
     def __init__(self, patience: int = 7, delta: float = 0):
-        self.best_score: float = None
+        self.best_score: Optional[float] = None
         self.early_stop: bool = False
         self.val_loss_min: float = np.inf
         self._patience = patience
         self._delta = delta
         self._counter: int = 0
 
-    def __call__(self, val_loss: float, model: nn.Module):
+    def __call__(self, val_loss: float, model: nn.Module) -> None:
         score = -val_loss
 
         if self.best_score is None:
@@ -48,12 +49,12 @@ class EarlyStopping:
             self._save_checkpoint(val_loss, model)
             self._counter = 0
 
-    def save_checkpoint(
+    def _save_checkpoint(
         self,
         val_loss: float,
         model: nn.Module,
         f_path: str = "checkpoints/checkpoint.pt",
-    ):
+    ) -> None:
         logging.info(
             f"Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}). Saving model ..."
         )
@@ -74,8 +75,8 @@ class Trainer:
     def __init__(
         self,
         model: nn.Module,
-        criterion: _Loss = None,
-        optimizer: Optimizer = None,
+        criterion: Optional[_Loss] = None,
+        optimizer: Optional[Optimizer] = None,
     ) -> None:
         self._model = model
         self._criterion = criterion
@@ -86,11 +87,11 @@ class Trainer:
         self,
         n_epoch: int,
         train_data_loader: DataLoader,
-        epoch_steps: int = None,
-        epochs_until_validation: int = None,
-        valid_data_loader: DataLoader = None,
-        patience: int = None,
-        delta: float = None,
+        epoch_steps: Optional[int] = None,
+        epochs_until_validation: Optional[int] = None,
+        valid_data_loader: Optional[DataLoader] = None,
+        patience: Optional[int] = None,
+        delta: Optional[float] = None,
     ) -> float:
         logging.info(f"Starting {n_epoch}-epoch training loop...")
 
@@ -104,22 +105,22 @@ class Trainer:
 
             if valid_data_loader and epochs_until_validation and (epoch + 1) % epochs_until_validation == 0:
                 validation_loss = self.validate(valid_data_loader)
-                early_stopping(validation_loss, self._model)
-                if early_stopping.early_stop:
-                    logging.info(f"Early stopping at epoch {epoch+1}")
-                    self._model.load_state_dict(torch.load("checkpoints/checkpoint.pt"))
-                    break
-                
+                if early_stopping:
+                    early_stopping(validation_loss, self._model)
+                    if early_stopping.early_stop:
+                        logging.info(f"Early stopping at epoch {epoch+1}")
+                        self._model.load_state_dict(torch.load("checkpoints/checkpoint.pt"))
+                        break
 
         train_loss /= n_epoch
         logging.info(f"Training completed: {n_epoch} epochs, Average Loss: {train_loss:.6f}")
         return train_loss
     
     def train_one_epoch(
-        self, data_loader: DataLoader, epoch_steps: int = None
+        self, data_loader: DataLoader, epoch_steps: Optional[int] = None
     ) -> float:
         epoch_loss = 0.0
-        total_steps = min(epoch_steps, len(data_loader))
+        total_steps = min(epoch_steps, len(data_loader)) if epoch_steps else len(data_loader)
         data_iter = iter(data_loader)
 
         self._model.train()
@@ -128,7 +129,7 @@ class Trainer:
             
         return epoch_loss / total_steps
 
-    def _train_one_batch(self, batch: tuple[torch.Tensor, torch.Tensor]) -> float:
+    def _train_one_batch(self, batch: Tuple[torch.Tensor, torch.Tensor]) -> float:
         inputs, labels = batch
 
         self._optimizer.zero_grad()
@@ -157,7 +158,7 @@ class Trainer:
         return validation_loss
 
     #@trace_stats()
-    def test(self, data_loader: DataLoader, metric: Metric = None) -> None:
+    def test(self, data_loader: DataLoader, metric: Optional[Metric] = None) -> None:
         logging.info(f"Starting test loop...")
         test_loss = 0.0
 
@@ -196,5 +197,5 @@ class Trainer:
 
     def load_model_weights(self, f_path: str = "saves/model.pt") -> None:
         logging.info("Loading model weights...")
-        self._model.load_state_dict(torch.load(f_path), weights_only=True)
+        self._model.load_state_dict(torch.load(f_path), strict=False)
         logging.info("Done")

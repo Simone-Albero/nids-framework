@@ -1,4 +1,5 @@
 import os
+from typing import TextIO
 
 import numpy as np
 from numpy.typing import NDArray
@@ -13,7 +14,7 @@ class Metric:
     ]
 
     def __init__(self, n_classes: int) -> None:
-        self._confusion_matrix: NDArray = np.zeros((n_classes, n_classes), dtype=int)
+        self._confusion_matrix: NDArray[np.int_] = np.zeros((n_classes, n_classes), dtype=int)
         self._n_classes: int = n_classes
 
     def update(self, y_pred: torch.Tensor, y_true: torch.Tensor) -> None:
@@ -48,7 +49,7 @@ class Metric:
     def _write_header(self, file_path: str) -> None:
         pass
 
-    def _write_metrics(self, file_handle) -> None:
+    def _write_metrics(self, file_handle: TextIO) -> None:
         pass
 
 
@@ -108,11 +109,7 @@ class BinaryClassificationMetric(Metric):
         with open(file_path, "w") as f:
             f.write("Precision,Recall,F1,TP,TN,FP,FN\n")
 
-        with open(file_path, "w") as f:
-            headers = ["Precision", "Recall", "F1", "TP", "TN", "FP", "FN"]
-            f.write(",".join(headers) + "\n")
-
-    def _write_metrics(self, file_handle) -> None:
+    def _write_metrics(self, file_handle: TextIO) -> None:
         file_handle.write(
             f"{self.precision},{self.recall},{self.f1},{self._confusion_matrix[1, 1]},{self._confusion_matrix[0, 0]},{self._confusion_matrix[0, 1]},{self._confusion_matrix[1, 0]}\n"
         )
@@ -128,7 +125,7 @@ class MulticlassClassificationMetric(Metric):
 
     def __init__(self, n_classes: int) -> None:
         super().__init__(n_classes)
-        self._class_stats: NDArray = np.zeros((n_classes, 3))
+        self._class_stats: NDArray[np.float_] = np.zeros((n_classes, 3))
         self.weighted_precision: float = 0.0
         self.weighted_recall: float = 0.0
         self.weighted_f1: float = 0.0
@@ -200,7 +197,7 @@ class MulticlassClassificationMetric(Metric):
             headers = ["Class", "Precision", "Recall", "F1", "Support"]
             f.write(",".join(headers) + "\n")
 
-    def _write_metrics(self, file_handle) -> None:
+    def _write_metrics(self, file_handle: TextIO) -> None:
         for i in range(self._n_classes):
             precision, recall, f1 = self._class_stats[i]
             support = np.sum(self._confusion_matrix[i, :])

@@ -1,0 +1,62 @@
+```plantuml
+@startuml
+
+package data {
+    class DatasetProperties {
+        List<String> features
+        List<String> categorical_features
+        List<String> numeric_features
+        Optional<List<String>> labels
+        Optional<String> benign_label
+    }
+
+    class Processor {
+        List<Callable[[Any], Any]] _transformations
+
+        +Processor(List<Callable[[Any], Any]] transformations)
+        +apply(Any data) : Any
+    }
+
+    class TabularDataset extends torch.utils.data.Dataset {
+        DataFrame data
+        List<String> features
+        List<String> labels
+
+        +TabularDataset(DataFrame data, List<String> features, List<String> labels)
+        +__getitem__(int index) : Tuple
+        +__len__() : int
+    }
+
+    class RandomSlidingWindowSampler extends torch.utils.data.Sampler {
+        int window_size
+        Dataset _dataset
+        List<int> _indices
+        int _tot_samples
+
+        +RandomSlidingWindowSampler(Dataset dataset, int window_size)
+        +__iter__() : Iterator<List<int>>
+    }
+
+    class GroupWindowSampler extends torch.utils.data.Sampler {
+        int window_size
+        Dataset _dataset
+        List<int> _indices
+        int _tot_samples
+
+        +GroupWindowSampler(Dataset dataset, int window_size)
+        +__iter__() : Iterator<List<int>>
+    }
+
+    class TransformationBuilder {
+        List<Callable[[Any], Any]] _transformations
+
+        +TransformationBuilder()
+        +add_transformation(Callable[[Any], Any] transformation) : TransformationBuilder
+        +build() : Processor
+    }
+
+    RandomSlidingWindowSampler --> torch.utils.data.Sampler
+    GroupWindowSampler --> torch.utils.data.Sampler
+}
+
+@enduml

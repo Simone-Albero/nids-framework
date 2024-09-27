@@ -1,11 +1,12 @@
 import random
+from typing import List, Iterator
 
 import pandas as pd
 import torch
 from torch.utils.data import Sampler, Dataset
 
 
-class RandomSlidingWindowSampler(Sampler):
+class RandomSlidingWindowSampler(Sampler[List[int]]):
 
     __slots__ = [
         "window_size",
@@ -17,25 +18,25 @@ class RandomSlidingWindowSampler(Sampler):
     def __init__(self, dataset: Dataset, window_size: int) -> None:
         self.window_size = window_size
         self._dataset = dataset
-        self._indices: list[int] = list(range(len(dataset) - window_size + 1))
+        self._indices: List[int] = list(range(len(dataset) - window_size + 1))
         self._tot_samples: int = len(self._indices)
         random.seed(42)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[List[int]]:
         shuffled_indices = self._indices[:]
         random.shuffle(shuffled_indices)
         return iter(
             [
-                torch.arange(start, start + self.window_size)
+                torch.arange(start, start + self.window_size).tolist()
                 for start in shuffled_indices
             ]
         )
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self._tot_samples
 
 
-class IndexedSlidingWindowSampler(Sampler):
+class IndexedSlidingWindowSampler(Sampler[List[int]]):
 
     __slots__ = [
         "window_size",
@@ -50,7 +51,7 @@ class IndexedSlidingWindowSampler(Sampler):
         self._indices = indices
         self._tot_samples: int = len(indices)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[List[int]]:
         shuffled_indices = self._indices.sample(frac=1).reset_index(drop=True)
 
         return iter(
@@ -60,11 +61,11 @@ class IndexedSlidingWindowSampler(Sampler):
             ]
         )
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self._tot_samples
 
 
-class GroupWindowSampler(Sampler):
+class GroupWindowSampler(Sampler[List[int]]):
 
     __slots__ = [
         "window_size",
@@ -86,7 +87,7 @@ class GroupWindowSampler(Sampler):
             if len(indices) >= window_size
         }
 
-        self._indices: list[list[int]] = [
+        self._indices: List[List[int]] = [
             indices[i : i + window_size]
             for indices in grouped_indices.values()
             for i in range(0, len(indices) - window_size + 1)
@@ -94,11 +95,11 @@ class GroupWindowSampler(Sampler):
 
         self._tot_samples: int = len(self._indices)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[List[int]]:
         shuffled_indices = self._indices[:]
         random.shuffle(shuffled_indices)
         for indices in shuffled_indices:
             yield indices
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self._tot_samples

@@ -1,6 +1,6 @@
 import logging
-
 import configparser
+from typing import List, Optional
 
 
 class DatasetProperties:
@@ -15,14 +15,14 @@ class DatasetProperties:
 
     def __init__(
         self,
-        features: list[str],
-        categorical_features: list[str],
-        labels: list[str] = None,
-        benign_label: str = None,
+        features: List[str],
+        categorical_features: List[str],
+        labels: Optional[List[str]] = None,
+        benign_label: Optional[str] = None,
     ) -> None:
         self.features = features
         self.categorical_features = categorical_features
-        self.numeric_features: list[str] = [
+        self.numeric_features: List[str] = [
             feature for feature in features if feature not in categorical_features
         ]
         self.labels = labels
@@ -41,21 +41,21 @@ class NamedDatasetProperties:
         "_config",
     ]
 
-    def __init__(self, config_path: str, saparator: str = ","):
+    def __init__(self, config_path: str, separator: str = ",") -> None:
         self.config_path = config_path
-        self.SEPARATOR = saparator
+        self.SEPARATOR = separator
         self._config: configparser.ConfigParser = configparser.ConfigParser()
         self._config.read(config_path)
 
-    def get_properties(self, name: str):
+    def get_properties(self, name: str) -> DatasetProperties:
         if name in self._config:
             logging.info(f"Reading '{name}' from '{self.config_path}'.")
             spec = self._config[name]
             return DatasetProperties(
                 features=spec["features"].split(self.SEPARATOR),
                 categorical_features=spec["categorical_features"].split(self.SEPARATOR),
-                labels=spec["labels"],
-                benign_label=spec["benign_label"],
+                labels=spec["labels"].split(self.SEPARATOR) if "labels" in spec else None,
+                benign_label=spec.get("benign_label"),
             )
         else:
             raise ValueError(f"Properties for {name} not found.")

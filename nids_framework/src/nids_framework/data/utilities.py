@@ -5,11 +5,12 @@ import numpy as np
 import torch
 
 from .properties import DatasetProperties
+from typing import Dict, List, Tuple, Any
 
 
 def min_max_values(
     df: pd.DataFrame, properties: DatasetProperties, bound: int = np.inf
-) -> tuple[dict[str, float], dict[str, float]]:
+) -> Tuple[Dict[str, float], Dict[str, float]]:
     min_values = {}
     max_values = {}
 
@@ -26,7 +27,7 @@ def min_max_values(
 
 def unique_values(
     df: pd.DataFrame, properties: DatasetProperties, categorical_levels: int
-) -> dict[str, list[any]]:
+) -> Dict[str, List[Any]]:
     unique_values = {}
 
     for col in properties.categorical_features:
@@ -38,7 +39,7 @@ def unique_values(
 
 def labels_mapping(
     df: pd.DataFrame, properties: DatasetProperties
-) -> tuple[dict[any, int], dict[int, any]]:
+) -> Tuple[Dict[Any, int], Dict[int, Any]]:
     logging.debug("Mapping class labels to numeric values...")
     mapping = {}
     reverse = {}
@@ -91,8 +92,8 @@ def base_pre_processing_row(
 def log_pre_processing(
     df: pd.DataFrame,
     properties: DatasetProperties,
-    min_values: dict[str, float],
-    max_values: dict[str, float],
+    min_values: Dict[str, float],
+    max_values: Dict[str, float],
 ) -> pd.DataFrame:
     logging.debug("Normalizing numeric features with Log...")
 
@@ -120,8 +121,8 @@ def log_pre_processing(
 def log_pre_processing_row(
     row: pd.Series,
     properties: DatasetProperties,
-    min_values: dict[str, float],
-    max_values: dict[str, float],
+    min_values: Dict[str, float],
+    max_values: Dict[str, float],
 ) -> pd.Series:
     logging.debug("Normalizing numeric features with Log for a single row...")
 
@@ -152,7 +153,7 @@ def log_pre_processing_row(
 def categorical_pre_processing(
     df: pd.DataFrame,
     properties: DatasetProperties,
-    unique_values: dict[str, list[any]],
+    unique_values: Dict[str, List[Any]],
     categorical_levels: int,
 ) -> pd.DataFrame:
     logging.debug(
@@ -171,7 +172,7 @@ def categorical_pre_processing(
 def categorical_pre_processing_row(
     row: pd.Series,
     properties: DatasetProperties,
-    unique_values: dict[str, list[any]],
+    unique_values: Dict[str, List[Any]],
     categorical_levels: int,
 ) -> pd.Series:
     logging.debug(
@@ -235,7 +236,7 @@ def binary_label_conversion_row(
 def multi_class_label_conversion(
     df: pd.DataFrame,
     properties: DatasetProperties,
-    mapping: dict[any, int],
+    mapping: Dict[Any, int],
 ) -> pd.DataFrame:
     logging.debug("Converting class labels to numeric values...")
 
@@ -250,7 +251,7 @@ def multi_class_label_conversion(
 def multi_class_label_conversion_row(
     row: pd.Series,
     properties: DatasetProperties,
-    mapping: dict[any, int],
+    mapping: Dict[Any, int],
 ) -> pd.Series:
     logging.debug("Converting class label to numeric value for a single row...")
 
@@ -264,7 +265,7 @@ def multi_class_label_conversion_row(
 def split_data_for_torch(
     df: pd.DataFrame,
     properties: DatasetProperties,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     logging.debug("Extracting features and labels for Torch...")
 
     features_df = df[properties.features]
@@ -276,7 +277,7 @@ def split_data_for_torch(
 def split_data_for_torch_row(
     row: pd.Series,
     properties: DatasetProperties,
-) -> tuple[pd.Series, pd.Series]:
+) -> Tuple[pd.Series, pd.Series]:
     logging.debug("Extracting features and labels for Torch for a single row...")
 
     features = row[properties.features]
@@ -327,7 +328,7 @@ def one_hot_encoding(tensor: torch.Tensor, levels: int) -> torch.Tensor:
 
 
 def mask_features(
-    tensor: torch.Tensor, mask_prob: float = 0.1, mask_value: any = 0.0
+    tensor: torch.Tensor, mask_prob: float = 0.1, mask_value: Any = 0.0
 ) -> torch.Tensor:
     mask = torch.rand(tensor.shape, device=tensor.device) < mask_prob
 
