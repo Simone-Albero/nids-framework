@@ -19,16 +19,18 @@ from nids_framework.model import transformer, loss
 from nids_framework.training import trainer, metrics
 
 
-def self_supervised_classification():
+def self_supervised_training():
     CONFIG_PATH = "configs/dataset_properties.ini"
-    DATASET_NAME = "nf_ton_iot_v2_binary_anonymous"
-    TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
-    TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
+    DATASET_NAME = "nf_unsw_nb15_v2_binary_anonymous"
+    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
+    # TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Custom-Train.csv"
+    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Test.csv"
+    # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Custom-Test.csv"
 
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000
 
-    BATCH_SIZE = 64
+    BATCH_SIZE = 32
     WINDOW_SIZE = 8
     EMBED_DIM = 256
     NUM_HEADS = 2
@@ -48,15 +50,12 @@ def self_supervised_classification():
     prop = named_prop.get_properties(DATASET_NAME)
 
     df_train = pd.read_csv(TRAIN_PATH)
-    df_test = pd.read_csv(TEST_PATH, nrows=100000)
+    df_test = pd.read_csv(TEST_PATH, nrows=5000)
 
     trans_builder = transformation_builder.TransformationBuilder()
 
     min_values, max_values = utilities.min_max_values(df_train, prop, BOUND)
     unique_values = utilities.unique_values(df_train, prop, CATEGORICAL_LEVEL)
-
-    with open('datasets/NF-ToN-IoT-V2/train_meta.pkl', 'wb') as f:
-        pickle.dump((min_values, max_values, unique_values), f)
 
     @trans_builder.add_step(order=1)
     def base_pre_processing(dataset):
@@ -69,10 +68,6 @@ def self_supervised_classification():
     @trans_builder.add_step(order=3)
     def categorical_conversion(dataset):
         return utilities.categorical_pre_processing(dataset, prop, unique_values, CATEGORICAL_LEVEL)
-
-    @trans_builder.add_step(order=4)
-    def binary_label_conversion(dataset):
-        return utilities.binary_label_conversion(dataset, prop)
     
     @trans_builder.add_step(order=5)
     def split_data_for_torch(dataset):
@@ -168,9 +163,76 @@ def self_supervised_classification():
         train_data_loader=train_dataloader,
         epoch_steps=EPOCH_STEPS,
     )
-    train.save_model(f"saves/s{WINDOW_SIZE}.pt")
-    #train.test(test_dataloader)
+    model.encoder.save_model_weights(f"saves/self_supervised_encoder.pt")
+    train.test(test_dataloader)
 
+
+def self_supervised_finetuning():
+    CONFIG_PATH = "configs/dataset_properties.ini"
+    DATASET_NAME = "nf_unsw_nb15_v2_binary_anonymous"
+    #TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
+    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Custom-Train.csv"
+    #TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Test.csv"
+    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Custom-Test.csv"
+
+    CATEGORICAL_LEVEL = 32
+    BOUND = 100000000
+
+    BATCH_SIZE = 64
+    WINDOW_SIZE = 8
+    EMBED_DIM = 256
+    NUM_HEADS = 2
+    NUM_LAYERS = 4
+    DROPOUT = 0.1
+    FF_DIM = 128
+    LR = 0.0005
+    WHIGHT_DECAY = 0.001
+
+    N_EPOCH = 1
+    EPOCH_STEPS = 64
+
+    named_prop = properties.NamedDatasetProperties(CONFIG_PATH)
+    prop = named_prop.get_properties(DATASET_NAME)
+
+    df_train = pd.read_csv(TRAIN_PATH)
+    df_test = pd.read_csv(TEST_PATH)
+
+    trans_builder = transformation_builder.TransformationBuilder()
+
+    min_values, max_values = utilities.min_max_values(df_train, prop, BOUND)
+    unique_values = utilities.unique_values(df_train, prop, CATEGORICAL_LEVEL)
+
+    @trans_builder.add_step(order=1)
+    def base_pre_processing(dataset):
+        return utilities.base_pre_processing(dataset, prop, BOUND)
+
+    @trans_builder.add_step(order=2)
+    def log_pre_processing(dataset):
+        return utilities.log_pre_processing(dataset, prop, min_values, max_values)
+
+    @trans_builder.add_step(order=3)
+    def categorical_conversion(dataset):
+        return utilities.categorical_pre_processing(dataset, prop, unique_values, CATEGORICAL_LEVEL)
+
+    @trans_builder.add_step(order=4)
+    def binary_label_conversion(dataset):
+        return utilities.binary_benign_label_conversion(dataset, prop)
+    
+    @trans_builder.add_step(order=5)
+    def split_data_for_torch(dataset):
+        return utilities.split_data_for_torch(dataset, prop)
+
+    transformations = trans_builder.build()
+
+    proc = processor.Processor(transformations)
+    X_train, y_train = proc.apply(df_train)
+    X_test, y_test = proc.apply(df_test)
+
+    device = "cpu"
+    if torch.cuda.is_available():
+        device = "cuda"
+    elif torch.backends.mps.is_available():
+        device = "mps"
 
     train_dataset = tabular_datasets.TabularDataset(
         X_train[prop.numeric_features],
@@ -216,9 +278,19 @@ def self_supervised_classification():
         shuffle=False,
     )
 
+    encoder = transformer.TransformerEncoder(
+        embed_dim=EMBED_DIM,
+        num_heads=NUM_HEADS,
+        num_layers=NUM_LAYERS,
+        ff_dim=FF_DIM,
+        dropout=DROPOUT
+    ).to(device)
+    encoder.load_model_weights("saves/self_supervised_encoder.pt")
+    pre_trained_encoder = encoder
+    for param in pre_trained_encoder.parameters():
+        param.requires_grad = False
+
     input_shape = next(iter(train_dataloader))[0].shape[-1]
-    
-    pre_trained_encoder = model.encoder
     model = transformer.TransformerClassifier(
         num_classes=1,
         input_dim=input_shape,
@@ -228,18 +300,14 @@ def self_supervised_classification():
         ff_dim=FF_DIM,
         dropout=DROPOUT
     ).to(device)
-    
-    for param in pre_trained_encoder.parameters():
-        param.requires_grad = False
     model.encoder = pre_trained_encoder
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logging.info(f"Total number of parameters: {total_params}")
 
     class_proportions = y_train.value_counts(normalize=True).sort_index()
-    weights = 1.0 / class_proportions.values
-    weights = weights / weights.sum()
-    logging.info(f"weights: {weights}")
+    logging.info(f"class_proportions: {class_proportions}")
+    weights = class_proportions.values
 
     criterion = nn.BCELoss(weight=torch.tensor(weights, dtype=torch.float32, device=device)[1])
     optimizer = optim.Adam(
@@ -249,14 +317,13 @@ def self_supervised_classification():
     )
 
     train = trainer.Trainer(model, criterion, optimizer)
-    train.set_model(model)
     
     train.train(
-        n_epoch=1,
+        n_epoch=N_EPOCH,
         train_data_loader=train_dataloader,
-        epoch_steps=128,
+        epoch_steps=EPOCH_STEPS,
     )
-    train.save_model(f"saves/s{WINDOW_SIZE}.pt")
+    model.save_model_weights(f"saves/self_supervised_tuned.pt")
 
     metric = metrics.BinaryClassificationMetric()
     train.test(test_dataloader, metric)
@@ -269,4 +336,5 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    self_supervised_classification()
+    #self_supervised_training()
+    self_supervised_finetuning()

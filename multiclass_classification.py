@@ -180,7 +180,7 @@ def multiclass_classification():
         train_data_loader=train_dataloader,
         epoch_steps=EPOCH_STEPS,
     )
-    train.save_model_weights(f"saves/{WINDOW_SIZE}.pt")
+    model.save_model_weights(f"saves/{WINDOW_SIZE}.pt")
 
     metric = metrics.MulticlassClassificationMetric(num_classes)
     train.test(test_dataloader, metric)

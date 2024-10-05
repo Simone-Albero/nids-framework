@@ -46,7 +46,7 @@ def binary_classification():
     WHIGHT_DECAY = 0.001
 
     N_EPOCH = 1
-    EPOCH_STEPS = 1000
+    EPOCH_STEPS = 64 #1000
     # EPOCH_UNTIL_VALIDATION = 100
     # PATIENCE = 2
     # DELTA = 0.01
@@ -122,19 +122,19 @@ def binary_classification():
     train_dataset.set_categorical_transformation(transformations)
     test_dataset.set_categorical_transformation(transformations)
 
-    # train_sampler = samplers.RandomSlidingWindowSampler(
-    #     train_dataset, window_size=WINDOW_SIZE
-    # )
-    # test_sampler = samplers.RandomSlidingWindowSampler(
-    #     test_dataset, window_size=WINDOW_SIZE
-    # )
+    train_sampler = samplers.RandomSlidingWindowSampler(
+        train_dataset, window_size=WINDOW_SIZE
+    )
+    test_sampler = samplers.RandomSlidingWindowSampler(
+        test_dataset, window_size=WINDOW_SIZE
+    )
 
-    train_sampler = samplers.GroupWindowSampler(
-        train_dataset, WINDOW_SIZE, df_train, "IPV4_DST_ADDR"
-    )
-    test_sampler = samplers.GroupWindowSampler(
-        test_dataset, WINDOW_SIZE, df_test, "IPV4_DST_ADDR"
-    )
+    # train_sampler = samplers.GroupWindowSampler(
+    #     train_dataset, WINDOW_SIZE, df_train, "IPV4_DST_ADDR"
+    # )
+    # test_sampler = samplers.GroupWindowSampler(
+    #     test_dataset, WINDOW_SIZE, df_test, "IPV4_DST_ADDR"
+    # )
 
     train_dataloader = DataLoader(
         train_dataset,
@@ -151,7 +151,7 @@ def binary_classification():
         shuffle=False,
     )
 
-    input_dim = next(iter(train_dataloader))[0  ].shape[-1]
+    input_dim = next(iter(train_dataloader))[0].shape[-1]
     logging.info(f"Input dim: {input_dim}")
 
     model = transformer.TransformerClassifier(
@@ -168,12 +168,11 @@ def binary_classification():
     logging.info(f"Total number of parameters: {total_params}")
 
     class_proportions = y_train.value_counts(normalize=True).sort_index()
-    weights = 1.0 / class_proportions.values
-    weights = weights / weights.sum()
-    logging.info(f"weights: {weights}")
+    logging.info(f"class_proportions: {class_proportions}")
+    weights = class_proportions.values
 
     criterion = nn.BCELoss(
-        weight=torch.tensor(weights, dtype=torch.float32, device=device)[0]#[1]
+        weight=torch.tensor(weights, dtype=torch.float32, device=device)[0]
     )
     optimizer = optim.Adam(
         model.parameters(),
@@ -188,7 +187,7 @@ def binary_classification():
         train_data_loader=train_dataloader,
         epoch_steps=EPOCH_STEPS,
     )
-    train.save_model_weights(f"saves/{prop.benign_label}.pt")
+    model.save_model_weights(f"saves/{prop.benign_label}.pt")
 
     metric = metrics.BinaryClassificationMetric()
     train.test(test_dataloader, metric)
@@ -282,7 +281,7 @@ def basic_test():
         shuffle=False,
     )
 
-    input_dim = next(iter(test_dataloader))[0  ].shape[-1]
+    input_dim = next(iter(test_dataloader))[0].shape[-1]
     logging.info(f"Input dim: {input_dim}")
 
     model = transformer.TransformerClassifier(
@@ -294,6 +293,7 @@ def basic_test():
         ff_dim=FF_DIM,
         dropout=DROPOUT,
     ).to(device)
+    model.load_model_weights(f"saves/{prop.benign_label}.pt")
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logging.info(f"Total number of parameters: {total_params}")
@@ -301,7 +301,6 @@ def basic_test():
     criterion = nn.BCELoss()
 
     train = trainer.Trainer(model, criterion)
-
     metric = metrics.BinaryClassificationMetric()
     train.test(test_dataloader, metric)
 

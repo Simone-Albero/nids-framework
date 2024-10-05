@@ -67,9 +67,9 @@ class EarlyStopping:
 class Trainer:
 
     __slots__ = [
-        "_model",
-        "_criterion",
-        "_optimizer",
+        "model",
+        "criterion",
+        "optimizer",
     ]
 
     def __init__(
@@ -78,11 +78,11 @@ class Trainer:
         criterion: Optional[_Loss] = None,
         optimizer: Optional[Optimizer] = None,
     ) -> None:
-        self._model = model
-        self._criterion = criterion
-        self._optimizer = optimizer
+        self.model = model
+        self.criterion = criterion
+        self.optimizer = optimizer
 
-    #@trace_stats()
+    @trace_stats()
     def train(
         self,
         n_epoch: int,
@@ -106,10 +106,10 @@ class Trainer:
             if valid_data_loader and epochs_until_validation and (epoch + 1) % epochs_until_validation == 0:
                 validation_loss = self.validate(valid_data_loader)
                 if early_stopping:
-                    early_stopping(validation_loss, self._model)
+                    early_stopping(validation_loss, self.model)
                     if early_stopping.early_stop:
                         logging.info(f"Early stopping at epoch {epoch+1}")
-                        self._model.load_state_dict(torch.load("checkpoints/checkpoint.pt"))
+                        self.model.load_state_dict(torch.load("checkpoints/checkpoint.pt"))
                         break
 
         train_loss /= n_epoch
@@ -123,7 +123,7 @@ class Trainer:
         total_steps = min(epoch_steps, len(data_loader)) if epoch_steps else len(data_loader)
         data_iter = iter(data_loader)
 
-        self._model.train()
+        self.model.train()
         for _ in tqdm(range(total_steps), desc="Training"):
             epoch_loss += self._train_one_batch(next(data_iter))
             
@@ -132,11 +132,11 @@ class Trainer:
     def _train_one_batch(self, batch: Tuple[torch.Tensor, torch.Tensor]) -> float:
         inputs, labels = batch
 
-        self._optimizer.zero_grad()
-        outputs = self._model(inputs)
-        loss = self._criterion(outputs, labels)
+        self.optimizer.zero_grad()
+        outputs = self.model(inputs)
+        loss = self.criterion(outputs, labels)
         loss.backward()
-        self._optimizer.step()
+        self.optimizer.step()
 
         return loss.item()
 
@@ -144,11 +144,11 @@ class Trainer:
         logging.info("Starting validation loop...")
         validation_loss = 0.0
 
-        self._model.eval()
+        self.model.eval()
         with torch.no_grad():
             for inputs, labels in tqdm(data_loader, desc="Validating"):
-                outputs = self._model(inputs)
-                loss = self._criterion(outputs, labels)
+                outputs = self.model(inputs)
+                loss = self.criterion(outputs, labels)
                 validation_loss += loss.item()
 
         validation_loss /= len(data_loader)
@@ -157,17 +157,17 @@ class Trainer:
         logging.info(f"Validation loss: {validation_loss:.6f}.\n")
         return validation_loss
 
-    #@trace_stats()
+    @trace_stats()
     def test(self, data_loader: DataLoader, metric: Optional[Metric] = None) -> None:
         logging.info(f"Starting test loop...")
         test_loss = 0.0
 
-        self._model.eval()
+        self.model.eval()
         with torch.no_grad():
             for inputs, labels in tqdm(data_loader, desc="Testing"):
-                outputs = self._model(inputs)
+                outputs = self.model(inputs)
 
-                loss = self._criterion(outputs, labels)
+                loss = self.criterion(outputs, labels)
                 test_loss += loss.item()
                 if metric is not None:
                     metric.step(outputs, labels)
@@ -180,22 +180,3 @@ class Trainer:
             metric.compute_metrics()
             logging.info(f"{metric}\n")
             metric.save()
-
-    def set_model(self, model: nn.Module) -> None:
-        self._model = model
-
-    def save_model_weights(self, f_path: str = "saves/model.pt") -> None:
-        logging.info("Saving model weights...")
-        os.makedirs(os.path.dirname(f_path), exist_ok=True)
-
-        curr_device = next(self._model.parameters()).device
-        self._model.to('cpu')
-        torch.save(self._model.state_dict(), f_path)
-        self._model.to(curr_device)
-
-        logging.info("Done")
-
-    def load_model_weights(self, f_path: str = "saves/model.pt") -> None:
-        logging.info("Loading model weights...")
-        self._model.load_state_dict(torch.load(f_path), strict=False)
-        logging.info("Done")
