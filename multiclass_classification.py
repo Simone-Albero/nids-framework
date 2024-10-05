@@ -91,6 +91,11 @@ def multiclass_classification():
     elif torch.backends.mps.is_available():
         device = "mps"
 
+    # Set seed for reproducibility
+    torch.manual_seed(29)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
     train_dataset = tabular_datasets.TabularDataset(
         X_train[prop.numeric_features],
         X_train[prop.categorical_features],

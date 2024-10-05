@@ -82,7 +82,7 @@ class Trainer:
         self.criterion = criterion
         self.optimizer = optimizer
 
-    @trace_stats()
+    #@trace_stats()
     def train(
         self,
         n_epoch: int,
@@ -157,7 +157,7 @@ class Trainer:
         logging.info(f"Validation loss: {validation_loss:.6f}.\n")
         return validation_loss
 
-    @trace_stats()
+    #@trace_stats()
     def test(self, data_loader: DataLoader, metric: Optional[Metric] = None) -> None:
         logging.info(f"Starting test loop...")
         test_loss = 0.0

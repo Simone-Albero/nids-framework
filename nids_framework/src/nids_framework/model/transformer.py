@@ -1,5 +1,6 @@
 import logging
 import os
+import math
 
 import torch
 import torch.nn as nn
@@ -72,10 +73,27 @@ class ClassificationHead(BaseModule):
         return x
 
 
+class PositionalEncoding(nn.Module):
+    def __init__(self, embed_dim: int, max_len: int = 5000):
+        super(PositionalEncoding, self).__init__()
+        pe = torch.zeros(max_len, embed_dim)
+        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, embed_dim, 2).float() * (-math.log(10000.0) / embed_dim))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(0)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = x + self.pe[:, :x.size(1), :]
+        return x
+    
+
 class TransformerEncoder(BaseModule):
 
     __slots__ = [
         "encoder",
+        "pos_encoder",
     ]
 
     def __init__(
@@ -85,8 +103,12 @@ class TransformerEncoder(BaseModule):
         num_layers: int = 4,
         ff_dim: int = 64,
         dropout: float = 0.1,
+        window_size: int = 10,
     ) -> None:
         super(TransformerEncoder, self).__init__()
+        
+        self.pos_encoder = PositionalEncoding(embed_dim, window_size)
+
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=embed_dim,
             nhead=num_heads,
@@ -99,8 +121,48 @@ class TransformerEncoder(BaseModule):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        x = self.pos_encoder(x)
         x = self.encoder(x)
         return x
+
+
+class TransformerDecoder(BaseModule):
+
+    __slots__ = [
+        "decoder",
+        "pos_encoder",
+    ]
+
+    def __init__(
+        self,
+        embed_dim: int,
+        num_heads: int = 2,
+        num_layers: int = 4,
+        ff_dim: int = 64,
+        dropout: float = 0.1,
+        window_size: int = 10,
+    ) -> None:
+        super(TransformerDecoder, self).__init__()
+        
+        self.pos_encoder = PositionalEncoding(embed_dim, window_size)
+
+        decoder_layer = nn.TransformerDecoderLayer(
+            d_model=embed_dim,
+            nhead=num_heads,
+            dim_feedforward=ff_dim,
+            dropout=dropout,
+            batch_first=True,
+        )
+        
+        self.decoder: nn.Module = nn.TransformerDecoder(
+            decoder_layer, num_layers=num_layers
+        )
+
+    def forward(self, x: Tensor, memory: Tensor) -> Tensor:
+        x = self.pos_encoder(x)
+        x = self.decoder(x, memory)
+        return x
+
 
 
 class TransformerClassifier(BaseModule):
@@ -121,12 +183,13 @@ class TransformerClassifier(BaseModule):
         num_layers: int = 4,
         ff_dim: int = 64,
         dropout: float = 0.1,
+        window_size: int = 10,
     ) -> None:
         super(TransformerClassifier, self).__init__()
         self.num_classes = num_classes
         self.embedding = InputEmbedding(input_dim, embed_dim, dropout)
         self.encoder = TransformerEncoder(
-            embed_dim, num_heads, num_layers, ff_dim, dropout
+            embed_dim, num_heads, num_layers, ff_dim, dropout, window_size
         )
 
         self.classifier = ClassificationHead(embed_dim, num_classes, dropout)
@@ -158,11 +221,12 @@ class TransformerAutoencoder(BaseModule):
         num_layers: int = 4,
         ff_dim: int = 64,
         dropout: float = 0.1,
+        window_size: int = 10,
     ) -> None:
         super(TransformerAutoencoder, self).__init__()
         self.embedding = InputEmbedding(input_dim, embed_dim, dropout)
         self.encoder = TransformerEncoder(
-            embed_dim, num_heads, num_layers, ff_dim, dropout
+            embed_dim, num_heads, num_layers, ff_dim, dropout, window_size
         )
         self.reconstructor = nn.Linear(embed_dim, input_dim)
         self.dropout = nn.Dropout(dropout)
@@ -171,10 +235,10 @@ class TransformerAutoencoder(BaseModule):
     def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
         x = self.embedding(x)
         x = self.encoder(x)
-        x = self.dropout(x)
-        x = self.reconstructor(x)
 
-        reconstructed_numeric = x[:, : self.border]
-        reconstructed_categorical = x[:, self.border :]
+        x_reconstructed = self.reconstructor(x)
+
+        reconstructed_numeric = x_reconstructed[:, :self.border]
+        reconstructed_categorical = x_reconstructed[:, self.border:]
 
         return reconstructed_numeric, reconstructed_categorical

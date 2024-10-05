@@ -23,22 +23,22 @@ def self_supervised_training():
     CONFIG_PATH = "configs/dataset_properties.ini"
     DATASET_NAME = "nf_unsw_nb15_v2_binary_anonymous"
     TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
-    # TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Custom-Train.csv"
-    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Test.csv"
-    # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Custom-Test.csv"
+    # TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Train.csv"
+    # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Test.csv"
+    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
 
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000
 
     BATCH_SIZE = 32
-    WINDOW_SIZE = 8
-    EMBED_DIM = 256
-    NUM_HEADS = 2
+    WINDOW_SIZE = 10
+    EMBED_DIM = 128
+    NUM_HEADS = 4
     NUM_LAYERS = 4
-    DROPOUT = 0.1
-    FF_DIM = 128
-    LR = 0.0005
-    WHIGHT_DECAY = 0.001
+    DROPOUT = 0.2
+    FF_DIM = 256
+    LR = 0.0003
+    WEIGHT_DECAY = 0.0005
 
     N_EPOCH = 1
     EPOCH_STEPS = 2000
@@ -144,7 +144,8 @@ def self_supervised_training():
         num_heads=NUM_HEADS,
         num_layers=NUM_LAYERS,
         ff_dim=FF_DIM,
-        dropout=DROPOUT
+        dropout=DROPOUT,
+        window_size=WINDOW_SIZE,
     ).to(device)
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -154,7 +155,7 @@ def self_supervised_training():
     optimizer = optim.Adam(
         model.parameters(),
         lr=LR,
-        weight_decay=WHIGHT_DECAY,
+        weight_decay=WEIGHT_DECAY,
     )
 
     train = trainer.Trainer(model, criterion, optimizer)
@@ -167,29 +168,29 @@ def self_supervised_training():
     train.test(test_dataloader)
 
 
-def self_supervised_finetuning():
+def self_supervised_finetuning(epoch_steps):
     CONFIG_PATH = "configs/dataset_properties.ini"
     DATASET_NAME = "nf_unsw_nb15_v2_binary_anonymous"
-    #TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
-    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Custom-Train.csv"
-    #TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Test.csv"
-    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Custom-Test.csv"
+    # TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
+    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Train.csv"
+    # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Test.csv"
+    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
 
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000
 
-    BATCH_SIZE = 64
-    WINDOW_SIZE = 8
-    EMBED_DIM = 256
-    NUM_HEADS = 2
+    BATCH_SIZE = 32
+    WINDOW_SIZE = 10
+    EMBED_DIM = 128
+    NUM_HEADS = 4
     NUM_LAYERS = 4
-    DROPOUT = 0.1
-    FF_DIM = 128
-    LR = 0.0005
-    WHIGHT_DECAY = 0.001
+    DROPOUT = 0.2
+    FF_DIM = 256
+    LR = 0.0003
+    WEIGHT_DECAY = 0.0005
 
     N_EPOCH = 1
-    EPOCH_STEPS = 64
+    EPOCH_STEPS = epoch_steps
 
     named_prop = properties.NamedDatasetProperties(CONFIG_PATH)
     prop = named_prop.get_properties(DATASET_NAME)
@@ -234,6 +235,11 @@ def self_supervised_finetuning():
     elif torch.backends.mps.is_available():
         device = "mps"
 
+    # Set seed for reproducibility
+    torch.manual_seed(13)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
     train_dataset = tabular_datasets.TabularDataset(
         X_train[prop.numeric_features],
         X_train[prop.categorical_features],
@@ -256,11 +262,18 @@ def self_supervised_finetuning():
     train_dataset.set_categorical_transformation(transformations)
     test_dataset.set_categorical_transformation(transformations)
 
-    train_sampler = samplers.RandomSlidingWindowSampler(
-        train_dataset, window_size=WINDOW_SIZE
+    # train_sampler = samplers.RandomSlidingWindowSampler(
+    #     train_dataset, window_size=WINDOW_SIZE
+    # )
+    # test_sampler = samplers.RandomSlidingWindowSampler(
+    #     test_dataset, window_size=WINDOW_SIZE
+    # )
+
+    train_sampler = samplers.GroupWindowSampler(
+        train_dataset, WINDOW_SIZE, df_train, "IPV4_DST_ADDR"
     )
-    test_sampler = samplers.RandomSlidingWindowSampler(
-        test_dataset, window_size=WINDOW_SIZE
+    test_sampler = samplers.GroupWindowSampler(
+        test_dataset, WINDOW_SIZE, df_test, "IPV4_DST_ADDR"
     )
 
     train_dataloader = DataLoader(
@@ -283,12 +296,16 @@ def self_supervised_finetuning():
         num_heads=NUM_HEADS,
         num_layers=NUM_LAYERS,
         ff_dim=FF_DIM,
-        dropout=DROPOUT
+        dropout=DROPOUT,
+        window_size=WINDOW_SIZE,
     ).to(device)
     encoder.load_model_weights("saves/self_supervised_encoder.pt")
+
     pre_trained_encoder = encoder
-    for param in pre_trained_encoder.parameters():
-        param.requires_grad = False
+    for i, layer in enumerate(pre_trained_encoder.encoder.layers):
+        if i <= 1: 
+            for param in layer.parameters():
+                param.requires_grad = False
 
     input_shape = next(iter(train_dataloader))[0].shape[-1]
     model = transformer.TransformerClassifier(
@@ -298,7 +315,8 @@ def self_supervised_finetuning():
         num_heads=NUM_HEADS,
         num_layers=NUM_LAYERS,
         ff_dim=FF_DIM,
-        dropout=DROPOUT
+        dropout=DROPOUT,
+        window_size=WINDOW_SIZE,
     ).to(device)
     model.encoder = pre_trained_encoder
 
@@ -313,8 +331,9 @@ def self_supervised_finetuning():
     optimizer = optim.Adam(
         model.parameters(),
         lr=LR,
-        weight_decay=WHIGHT_DECAY,
+        weight_decay=WEIGHT_DECAY,
     )
+
 
     train = trainer.Trainer(model, criterion, optimizer)
     
@@ -337,4 +356,7 @@ if __name__ == "__main__":
     )
 
     #self_supervised_training()
-    self_supervised_finetuning()
+
+    self_supervised_finetuning(110)
+    # for i in range(60, 110, 10):
+    #     self_supervised_finetuning(i)

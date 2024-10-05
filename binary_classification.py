@@ -19,7 +19,7 @@ from nids_framework.model import transformer
 from nids_framework.training import trainer, metrics
 
 
-def binary_classification():
+def binary_classification(epoch_steps):
     CONFIG_PATH = "configs/dataset_properties.ini"
 
     # DATASET_NAME = "nf_ton_iot_v2_binary_anonymous"
@@ -27,26 +27,26 @@ def binary_classification():
     # TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
 
     DATASET_NAME = "nf_unsw_nb15_v2_binary_anonymous"
-    #TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
-    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Custom-Train.csv"
+    # TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
+    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Train.csv"
     # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Test.csv"
-    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Custom-Test.csv"
+    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
 
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000
 
     BATCH_SIZE = 32
-    WINDOW_SIZE = 8
-    EMBED_DIM = 256
-    NUM_HEADS = 2
+    WINDOW_SIZE = 10
+    EMBED_DIM = 128
+    NUM_HEADS = 4
     NUM_LAYERS = 4
-    DROPOUT = 0.1
-    FF_DIM = 128
-    LR = 0.0005
-    WHIGHT_DECAY = 0.001
+    DROPOUT = 0.2
+    FF_DIM = 256
+    LR = 0.0003
+    WEIGHT_DECAY = 0.0005
 
     N_EPOCH = 1
-    EPOCH_STEPS = 64 #1000
+    EPOCH_STEPS = epoch_steps #1000
     # EPOCH_UNTIL_VALIDATION = 100
     # PATIENCE = 2
     # DELTA = 0.01
@@ -55,7 +55,7 @@ def binary_classification():
     prop = named_prop.get_properties(DATASET_NAME)
 
     df_train = pd.read_csv(TRAIN_PATH)
-    df_test = pd.read_csv(TEST_PATH, nrows=5000)
+    df_test = pd.read_csv(TEST_PATH)
 
     # print(df_test["Attack"].value_counts())
     # exit(1)
@@ -102,6 +102,11 @@ def binary_classification():
         device = "cuda"
     elif torch.backends.mps.is_available():
         device = "mps"
+
+    # Set seed for reproducibility
+    torch.manual_seed(13)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
     train_dataset = tabular_datasets.TabularDataset(
         X_train[prop.numeric_features],
@@ -177,7 +182,7 @@ def binary_classification():
     optimizer = optim.Adam(
         model.parameters(),
         lr=LR,
-        weight_decay=WHIGHT_DECAY,
+        weight_decay=WEIGHT_DECAY,
     )
 
     train = trainer.Trainer(model, criterion, optimizer)
@@ -292,6 +297,7 @@ def basic_test():
         num_layers=NUM_LAYERS,
         ff_dim=FF_DIM,
         dropout=DROPOUT,
+        window_size=WINDOW_SIZE,
     ).to(device)
     model.load_model_weights(f"saves/{prop.benign_label}.pt")
 
@@ -313,4 +319,5 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    binary_classification()
+    for i in range(60, 110, 10):
+        binary_classification(i)
