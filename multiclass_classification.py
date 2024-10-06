@@ -20,25 +20,27 @@ from nids_framework.training import trainer, metrics
 
 def multiclass_classification():
     CONFIG_PATH = "configs/dataset_properties.ini"
-    DATASET_NAME = "nf_ton_iot_v2_anonymous"
-    TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
-    TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
+    DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
+    # TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
+    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Multi-Train.csv"
+    # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Test.csv"
+    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Multi-Test.csv"
 
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000
 
     BATCH_SIZE = 64
-    WINDOW_SIZE = 8
+    WINDOW_SIZE = 15
     EMBED_DIM = 256
-    NUM_HEADS = 2
+    NUM_HEADS = 4
     NUM_LAYERS = 4
-    DROPOUT = 0.1
-    FF_DIM = 128
-    LR = 0.0005
-    WHIGHT_DECAY = 0.001
+    DROPOUT = 0.3
+    FF_DIM = 512
+    LR = 0.0002
+    WEIGHT_DECAY = 0.0005
 
-    N_EPOCH = 1
-    EPOCH_STEPS = 3000
+    N_EPOCH = 8
+    EPOCH_STEPS = 500
     # EPOCH_UNTIL_VALIDATION = 100
     # PATIENCE = 2
     # DELTA = 0.01
@@ -47,7 +49,7 @@ def multiclass_classification():
     prop = named_prop.get_properties(DATASET_NAME)
 
     df_train = pd.read_csv(TRAIN_PATH)
-    df_test = pd.read_csv(TEST_PATH, nrows=100000)
+    df_test = pd.read_csv(TEST_PATH)
 
     trans_builder = transformation_builder.TransformationBuilder()
 
@@ -55,9 +57,6 @@ def multiclass_classification():
     unique_values = utilities.unique_values(df_train, prop, CATEGORICAL_LEVEL)
     class_mapping, _ = utilities.labels_mapping(df_train, prop)
     logging.info(f"Class Mapping:\n {class_mapping}\n")
-
-    with open('datasets/NF-ToN-IoT-V2/train_meta.pkl', 'wb') as f:
-        pickle.dump((min_values, max_values, unique_values, class_mapping), f)
 
     @trans_builder.add_step(order=1)
     def base_pre_processing(dataset):
@@ -69,12 +68,14 @@ def multiclass_classification():
 
     @trans_builder.add_step(order=3)
     def categorical_conversion(dataset):
-        return utilities.categorical_pre_processing(dataset, prop, unique_values, CATEGORICAL_LEVEL)
-    
+        return utilities.categorical_pre_processing(
+            dataset, prop, unique_values, CATEGORICAL_LEVEL
+        )
+
     @trans_builder.add_step(order=4)
-    def multiclass_label_conversion(dataset):
+    def multi_class_label_conversion(dataset):
         return utilities.multi_class_label_conversion(dataset, prop, class_mapping)
-    
+
     @trans_builder.add_step(order=5)
     def split_data_for_torch(dataset):
         return utilities.split_data_for_torch(dataset, prop)
@@ -92,7 +93,7 @@ def multiclass_classification():
         device = "mps"
 
     # Set seed for reproducibility
-    torch.manual_seed(29)
+    torch.manual_seed(13)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
@@ -120,19 +121,19 @@ def multiclass_classification():
     train_dataset.set_categorical_transformation(transformations)
     test_dataset.set_categorical_transformation(transformations)
 
-    # train_sampler = samplers.RandomSlidingWindowSampler(
-    #     train_dataset, window_size=WINDOW_SIZE
-    # )
-    # test_sampler = samplers.RandomSlidingWindowSampler(
-    #     test_dataset, window_size=WINDOW_SIZE
-    # )
+    train_sampler = samplers.RandomSlidingWindowSampler(
+        train_dataset, window_size=WINDOW_SIZE
+    )
+    test_sampler = samplers.RandomSlidingWindowSampler(
+        test_dataset, window_size=WINDOW_SIZE
+    )
 
-    train_sampler = samplers.GroupWindowSampler(
-        train_dataset, WINDOW_SIZE, df_train, "IPV4_SRC_ADDR"
-    )
-    test_sampler = samplers.GroupWindowSampler(
-        test_dataset, WINDOW_SIZE, df_test, "IPV4_SRC_ADDR"
-    )
+    # train_sampler = samplers.GroupWindowSampler(
+    #     train_dataset, WINDOW_SIZE, df_train, "IPV4_SRC_ADDR"
+    # )
+    # test_sampler = samplers.GroupWindowSampler(
+    #     test_dataset, WINDOW_SIZE, df_test, "IPV4_SRC_ADDR"
+    # )
 
     train_dataloader = DataLoader(
         train_dataset,
@@ -154,6 +155,22 @@ def multiclass_classification():
 
     num_classes = len(class_mapping)
 
+    # encoder = transformer.TransformerEncoder(
+    #     embed_dim=EMBED_DIM,
+    #     num_heads=NUM_HEADS,
+    #     num_layers=NUM_LAYERS,
+    #     ff_dim=FF_DIM,
+    #     dropout=DROPOUT,
+    #     window_size=WINDOW_SIZE,
+    # ).to(device)
+    # encoder.load_model_weights("saves/self_supervised_encoder.pt")
+
+    # pre_trained_encoder = encoder
+    # for i, layer in enumerate(pre_trained_encoder.encoder.layers):
+    #     if i <= 1: 
+    #         for param in layer.parameters():
+    #             param.requires_grad = False
+
     model = transformer.TransformerClassifier(
         num_classes=num_classes,
         input_dim=input_dim,
@@ -161,22 +178,24 @@ def multiclass_classification():
         num_heads=NUM_HEADS,
         num_layers=NUM_LAYERS,
         ff_dim=FF_DIM,
-        dropout=DROPOUT
+        dropout=DROPOUT,
+        window_size=WINDOW_SIZE,
     ).to(device)
+    #model.encoder = pre_trained_encoder
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logging.info(f"Total number of parameters: {total_params}")
 
     class_proportions = y_train.value_counts(normalize=True).sort_index()
-    weights = 1.0 / class_proportions.values
-    weights = weights / weights.sum()
-    logging.info(f"weights: {weights}")
-    
-    criterion = nn.CrossEntropyLoss(weight=torch.tensor(weights, dtype=torch.float32, device=device))
+    class_weights = 1.0 / class_proportions
+    normalized_weights = class_weights / class_weights.sum()
+    logging.info(f"class_weights: {normalized_weights}")
+
+    criterion = nn.CrossEntropyLoss(weight=torch.tensor(normalized_weights.values, dtype=torch.float32, device=device))
     optimizer = optim.Adam(
         model.parameters(),
         lr=LR,
-        weight_decay=WHIGHT_DECAY,
+        weight_decay=WEIGHT_DECAY,
     )
 
     train = trainer.Trainer(model, criterion, optimizer)
@@ -185,7 +204,7 @@ def multiclass_classification():
         train_data_loader=train_dataloader,
         epoch_steps=EPOCH_STEPS,
     )
-    model.save_model_weights(f"saves/{WINDOW_SIZE}.pt")
+    model.save_model_weights(f"saves/multiclass.pt")
 
     metric = metrics.MulticlassClassificationMetric(num_classes)
     train.test(test_dataloader, metric)

@@ -67,8 +67,8 @@ class ClassificationHead(BaseModule):
 
         if self.num_classes == 1:
             x = torch.sigmoid(x).squeeze(-1)
-        else:
-            x = F.softmax(x, dim=-1)
+        # else:
+        #     x = F.softmax(x, dim=-1)
 
         return x
 

@@ -44,12 +44,11 @@ def labels_mapping(
     mapping = {}
     reverse = {}
 
-    for idx, label in enumerate(df[properties.labels].unique()):
+    for idx, label in enumerate(df[properties.label].unique()):
         mapping[label] = idx
         reverse[idx] = label
-
+    
     return mapping, reverse
-
 
 def base_pre_processing(
     df: pd.DataFrame,
@@ -197,8 +196,8 @@ def binary_benign_label_conversion(
 
     df_copy = df.copy()
 
-    df_copy[properties.labels] = ~(
-        df_copy[properties.labels].astype("str") == properties.benign_label
+    df_copy[properties.label] = ~(
+        df_copy[properties.label].astype("str") == properties.benign_label
     )
 
     return df_copy
@@ -211,8 +210,8 @@ def binary_label_conversion(
 
     df_copy = df.copy()
 
-    df_copy[properties.labels] = (
-        df_copy[properties.labels].astype("str") == properties.benign_label
+    df_copy[properties.label] = (
+        df_copy[properties.label].astype("str") == properties.benign_label
     )
 
     return df_copy
@@ -226,8 +225,8 @@ def binary_label_conversion_row(
 
     row_copy = row.copy()
 
-    row_copy[properties.labels] = not (
-        str(row_copy[properties.labels]) == properties.benign_label
+    row_copy[properties.label] = not (
+        str(row_copy[properties.label]) == properties.benign_label
     )
 
     return row_copy
@@ -241,8 +240,8 @@ def multi_class_label_conversion(
     logging.debug("Converting class labels to numeric values...")
 
     df_copy = df.copy()
-    df_copy[properties.labels] = (
-        df_copy[properties.labels].map(mapping).fillna(-1).astype(int)
+    df_copy[properties.label] = (
+        df_copy[properties.label].map(mapping).fillna(-1).astype(int)
     )
 
     return df_copy
@@ -257,7 +256,7 @@ def multi_class_label_conversion_row(
 
     row_copy = row.copy()
 
-    row_copy[properties.labels] = mapping.get(row_copy[properties.labels], -1)
+    row_copy[properties.label] = mapping.get(row_copy[properties.label], -1)
 
     return row_copy
 
@@ -269,7 +268,7 @@ def split_data_for_torch(
     logging.debug("Extracting features and labels for Torch...")
 
     features_df = df[properties.features]
-    labels_df = df[properties.labels]
+    labels_df = df[properties.label]
 
     return features_df, labels_df
 
@@ -281,7 +280,7 @@ def split_data_for_torch_row(
     logging.debug("Extracting features and labels for Torch for a single row...")
 
     features = row[properties.features]
-    labels = row[properties.labels]
+    labels = row[properties.label]
 
     return features, labels
 

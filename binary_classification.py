@@ -173,12 +173,10 @@ def binary_classification(epoch_steps):
     logging.info(f"Total number of parameters: {total_params}")
 
     class_proportions = y_train.value_counts(normalize=True).sort_index()
-    logging.info(f"class_proportions: {class_proportions}")
-    weights = class_proportions.values
+    pos_weight = torch.tensor([class_proportions.iloc[0] / class_proportions.iloc[1]], dtype=torch.float32, device=device)
+    logging.info(f"pos_weight: {pos_weight}")
 
-    criterion = nn.BCELoss(
-        weight=torch.tensor(weights, dtype=torch.float32, device=device)[0]
-    )
+    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     optimizer = optim.Adam(
         model.parameters(),
         lr=LR,
@@ -319,5 +317,5 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    for i in range(60, 110, 10):
+    for i in range(40, 150, 10):
         binary_classification(i)

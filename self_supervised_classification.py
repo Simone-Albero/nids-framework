@@ -85,6 +85,11 @@ def self_supervised_training():
     elif torch.backends.mps.is_available():
         device = "mps"
 
+    # Set seed for reproducibility
+    torch.manual_seed(13)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
     train_dataset = tabular_datasets.TabularReconstructionDataset(
         X_train[prop.numeric_features],
         X_train[prop.categorical_features],
@@ -324,10 +329,10 @@ def self_supervised_finetuning(epoch_steps):
     logging.info(f"Total number of parameters: {total_params}")
 
     class_proportions = y_train.value_counts(normalize=True).sort_index()
-    logging.info(f"class_proportions: {class_proportions}")
-    weights = class_proportions.values
+    pos_weight = torch.tensor([class_proportions.iloc[0] / class_proportions.iloc[1]], dtype=torch.float32, device=device)
+    logging.info(f"pos_weight: {pos_weight}")
 
-    criterion = nn.BCELoss(weight=torch.tensor(weights, dtype=torch.float32, device=device)[1])
+    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     optimizer = optim.Adam(
         model.parameters(),
         lr=LR,
@@ -357,6 +362,7 @@ if __name__ == "__main__":
 
     #self_supervised_training()
 
-    self_supervised_finetuning(110)
-    # for i in range(60, 110, 10):
+    self_supervised_finetuning(150)
+
+    # for i in range(40, 150, 10):
     #     self_supervised_finetuning(i)

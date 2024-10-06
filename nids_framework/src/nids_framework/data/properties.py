@@ -1,7 +1,6 @@
-import logging
 import configparser
+import logging
 from typing import List, Optional
-
 
 class DatasetProperties:
 
@@ -9,7 +8,7 @@ class DatasetProperties:
         "features",
         "categorical_features",
         "numeric_features",
-        "labels",
+        "label",
         "benign_label",
     ]
 
@@ -17,7 +16,7 @@ class DatasetProperties:
         self,
         features: List[str],
         categorical_features: List[str],
-        labels: Optional[List[str]] = None,
+        label: Optional[str] = None,
         benign_label: Optional[str] = None,
     ) -> None:
         self.features = features
@@ -25,7 +24,7 @@ class DatasetProperties:
         self.numeric_features: List[str] = [
             feature for feature in features if feature not in categorical_features
         ]
-        self.labels = labels
+        self.label = label
         self.benign_label = benign_label
 
         logging.info(
@@ -54,7 +53,7 @@ class NamedDatasetProperties:
             return DatasetProperties(
                 features=spec["features"].split(self.SEPARATOR),
                 categorical_features=spec["categorical_features"].split(self.SEPARATOR),
-                labels=spec["labels"].split(self.SEPARATOR) if "labels" in spec else None,
+                label=spec.get("label"),
                 benign_label=spec.get("benign_label"),
             )
         else:
