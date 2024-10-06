@@ -202,6 +202,20 @@ def binary_benign_label_conversion(
 
     return df_copy
 
+def binary_benign_label_conversion_row(
+    row: pd.Series,
+    properties: DatasetProperties,
+) -> pd.Series:
+    logging.debug("Converting class label to numeric value for a single row...")
+
+    row_copy = row.copy()
+
+    row_copy[properties.label] = not (
+        str(row_copy[properties.label]) == properties.benign_label
+    )
+
+    return row_copy
+
 def binary_label_conversion(
     df: pd.DataFrame,
     properties: DatasetProperties,
@@ -216,7 +230,6 @@ def binary_label_conversion(
 
     return df_copy
 
-
 def binary_label_conversion_row(
     row: pd.Series,
     properties: DatasetProperties,
@@ -225,12 +238,11 @@ def binary_label_conversion_row(
 
     row_copy = row.copy()
 
-    row_copy[properties.label] = not (
+    row_copy[properties.label] = (
         str(row_copy[properties.label]) == properties.benign_label
     )
 
     return row_copy
-
 
 def multi_class_label_conversion(
     df: pd.DataFrame,
