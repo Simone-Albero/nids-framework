@@ -24,7 +24,7 @@ class BaseModule(nn.Module):
 
     def load_model_weights(self, f_path: str = "saves/model.pt", map_location: str = "cpu") -> None:
         logging.info("Loading model weights...")
-        self.load_state_dict(torch.load(f_path, map_location=map_location), strict=False)
+        self.load_state_dict(torch.load(f_path, map_location=map_location), strict=True)
         logging.info("Model weights loaded successfully")
 
 

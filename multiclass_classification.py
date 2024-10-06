@@ -18,7 +18,7 @@ from nids_framework.data import (
 from nids_framework.model import transformer
 from nids_framework.training import trainer, metrics
 
-def multiclass_classification():
+def multiclass_classification(epoch_steps):
     CONFIG_PATH = "configs/dataset_properties.ini"
     DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
     # TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
@@ -33,14 +33,14 @@ def multiclass_classification():
     WINDOW_SIZE = 15
     EMBED_DIM = 256
     NUM_HEADS = 4
-    NUM_LAYERS = 4
+    NUM_LAYERS = 6
     DROPOUT = 0.3
     FF_DIM = 512
     LR = 0.0002
     WEIGHT_DECAY = 0.0005
 
-    N_EPOCH = 8
-    EPOCH_STEPS = 500
+    N_EPOCH = 1
+    EPOCH_STEPS = epoch_steps
     # EPOCH_UNTIL_VALIDATION = 100
     # PATIENCE = 2
     # DELTA = 0.01
@@ -155,21 +155,21 @@ def multiclass_classification():
 
     num_classes = len(class_mapping)
 
-    # encoder = transformer.TransformerEncoder(
-    #     embed_dim=EMBED_DIM,
-    #     num_heads=NUM_HEADS,
-    #     num_layers=NUM_LAYERS,
-    #     ff_dim=FF_DIM,
-    #     dropout=DROPOUT,
-    #     window_size=WINDOW_SIZE,
-    # ).to(device)
-    # encoder.load_model_weights("saves/self_supervised_encoder.pt")
+    encoder = transformer.TransformerEncoder(
+        embed_dim=EMBED_DIM,
+        num_heads=NUM_HEADS,
+        num_layers=NUM_LAYERS,
+        ff_dim=FF_DIM,
+        dropout=DROPOUT,
+        window_size=WINDOW_SIZE,
+    ).to(device)
+    encoder.load_model_weights("saves/self_supervised_multi_encoder.pt")
 
-    # pre_trained_encoder = encoder
-    # for i, layer in enumerate(pre_trained_encoder.encoder.layers):
-    #     if i <= 1: 
-    #         for param in layer.parameters():
-    #             param.requires_grad = False
+    pre_trained_encoder = encoder
+    for i, layer in enumerate(pre_trained_encoder.encoder.layers):
+        if i <= 2: 
+            for param in layer.parameters():
+                param.requires_grad = False
 
     model = transformer.TransformerClassifier(
         num_classes=num_classes,
@@ -181,7 +181,7 @@ def multiclass_classification():
         dropout=DROPOUT,
         window_size=WINDOW_SIZE,
     ).to(device)
-    #model.encoder = pre_trained_encoder
+    model.encoder = pre_trained_encoder
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logging.info(f"Total number of parameters: {total_params}")
@@ -217,4 +217,5 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    multiclass_classification()
+    for i in range(100, 500, 50):
+        multiclass_classification(i)
