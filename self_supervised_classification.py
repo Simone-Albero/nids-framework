@@ -140,10 +140,11 @@ def self_supervised_training():
         shuffle=False,
     )
 
-    input_shape = next(iter(train_dataloader))[0].shape[-1]
+    input_dim = next(iter(train_dataloader))[0].shape[-1]
+    logging.info(f"Input dim: {input_dim}")
 
     model = transformer.TransformerAutoencoder(
-        input_dim=input_shape,
+        input_dim=input_dim,
         border=train_dataset.get_border(),
         embed_dim=EMBED_DIM,
         num_heads=NUM_HEADS,
@@ -179,7 +180,7 @@ def self_supervised_finetuning(epoch_steps):
     # TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
     TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Train.csv"
     # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Test.csv"
-    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
+    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-DoS-Test.csv"
 
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000
@@ -208,6 +209,9 @@ def self_supervised_finetuning(epoch_steps):
     min_values, max_values = utilities.min_max_values(df_train, prop, BOUND)
     unique_values = utilities.unique_values(df_train, prop, CATEGORICAL_LEVEL)
 
+    with open("datasets/NF-UNSW-NB15-V2/train_meta.pkl", "wb") as f:
+        pickle.dump((min_values, max_values, unique_values), f)
+
     @trans_builder.add_step(order=1)
     def base_pre_processing(dataset):
         return utilities.base_pre_processing(dataset, prop, BOUND)
@@ -222,7 +226,8 @@ def self_supervised_finetuning(epoch_steps):
 
     @trans_builder.add_step(order=4)
     def binary_label_conversion(dataset):
-        return utilities.binary_benign_label_conversion(dataset, prop)
+        #return utilities.binary_benign_label_conversion(dataset, prop)
+        return utilities.binary_label_conversion(dataset, prop)
     
     @trans_builder.add_step(order=5)
     def split_data_for_torch(dataset):
@@ -275,10 +280,10 @@ def self_supervised_finetuning(epoch_steps):
     # )
 
     train_sampler = samplers.GroupWindowSampler(
-        train_dataset, WINDOW_SIZE, df_train, "IPV4_DST_ADDR"
+        train_dataset, WINDOW_SIZE, df_train, "IPV4_SRC_ADDR"
     )
     test_sampler = samplers.GroupWindowSampler(
-        test_dataset, WINDOW_SIZE, df_test, "IPV4_DST_ADDR"
+        test_dataset, WINDOW_SIZE, df_test, "IPV4_SRC_ADDR"
     )
 
     train_dataloader = DataLoader(
@@ -312,10 +317,12 @@ def self_supervised_finetuning(epoch_steps):
             for param in layer.parameters():
                 param.requires_grad = False
 
-    input_shape = next(iter(train_dataloader))[0].shape[-1]
+    input_dim = next(iter(train_dataloader))[0].shape[-1]
+    logging.info(f"Input dim: {input_dim}")
+
     model = transformer.TransformerClassifier(
         num_classes=1,
-        input_dim=input_shape,
+        input_dim=input_dim,
         embed_dim=EMBED_DIM,
         num_heads=NUM_HEADS,
         num_layers=NUM_LAYERS,
@@ -362,7 +369,7 @@ if __name__ == "__main__":
 
     #self_supervised_training()
 
-    self_supervised_finetuning(150)
+    self_supervised_finetuning(140)
 
     # for i in range(40, 150, 10):
     #     self_supervised_finetuning(i)

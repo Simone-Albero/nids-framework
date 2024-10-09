@@ -4,6 +4,7 @@ logs/
 checkpoints/
 saves/
 plots/
+figures/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

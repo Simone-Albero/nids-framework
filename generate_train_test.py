@@ -34,10 +34,10 @@ def generate_custom():
     custom_df = pd.DataFrame()
     #attacks = df["Attack"].unique()
     #attacks = attacks[(attacks != "Benign")]
-    attacks = ["Fuzzers", "Exploits", "DoS"]
+    attacks = ["DoS", "Reconnaissance", "Fuzzers"]
     benign_rows = df[df["Attack"] == "Benign"]
     added_indices = set()
-    WINDOW = 3 
+    WINDOW = 2 
     ATTACK_SAMPLES = 500 
 
     for label in tqdm.tqdm(attacks):
@@ -68,7 +68,7 @@ def generate_custom():
     custom_df = custom_df.sort_index()
     print(custom_df["Attack"].value_counts())
 
-    output_path = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Custom-Test.csv"
+    output_path = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
     custom_df.to_csv(output_path, index=False)
 
 

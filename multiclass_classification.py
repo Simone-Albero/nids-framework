@@ -22,9 +22,9 @@ def multiclass_classification(epoch_steps):
     CONFIG_PATH = "configs/dataset_properties.ini"
     DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
     # TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
-    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Multi-Train.csv"
+    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Train.csv"
     # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Test.csv"
-    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Multi-Test.csv"
+    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
 
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000
@@ -121,19 +121,19 @@ def multiclass_classification(epoch_steps):
     train_dataset.set_categorical_transformation(transformations)
     test_dataset.set_categorical_transformation(transformations)
 
-    train_sampler = samplers.RandomSlidingWindowSampler(
-        train_dataset, window_size=WINDOW_SIZE
-    )
-    test_sampler = samplers.RandomSlidingWindowSampler(
-        test_dataset, window_size=WINDOW_SIZE
-    )
+    # train_sampler = samplers.RandomSlidingWindowSampler(
+    #     train_dataset, window_size=WINDOW_SIZE
+    # )
+    # test_sampler = samplers.RandomSlidingWindowSampler(
+    #     test_dataset, window_size=WINDOW_SIZE
+    # )
 
-    # train_sampler = samplers.GroupWindowSampler(
-    #     train_dataset, WINDOW_SIZE, df_train, "IPV4_SRC_ADDR"
-    # )
-    # test_sampler = samplers.GroupWindowSampler(
-    #     test_dataset, WINDOW_SIZE, df_test, "IPV4_SRC_ADDR"
-    # )
+    train_sampler = samplers.GroupWindowSampler(
+        train_dataset, WINDOW_SIZE, df_train, "IPV4_DST_ADDR"
+    )
+    test_sampler = samplers.GroupWindowSampler(
+        test_dataset, WINDOW_SIZE, df_test, "IPV4_DST_ADDR"
+    )
 
     train_dataloader = DataLoader(
         train_dataset,
@@ -217,5 +217,7 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    for i in range(100, 500, 50):
-        multiclass_classification(i)
+    multiclass_classification(140)
+    
+    # for i in range(100, 500, 50):
+    #     multiclass_classification(i)
