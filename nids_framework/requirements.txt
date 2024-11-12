@@ -5,6 +5,6 @@ torchvision
 torchaudio
 tqdm
 psutil
-rich
-matplotlib 
+matplotlib
 scikit-learn
+rich
