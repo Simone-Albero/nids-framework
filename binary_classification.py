@@ -22,15 +22,11 @@ from nids_framework.training import trainer, metrics
 def binary_classification(epoch_steps):
     CONFIG_PATH = "configs/dataset_properties.ini"
 
-    # DATASET_NAME = "nf_ton_iot_v2_binary_anonymous"
-    # TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
-    # TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
-
-    DATASET_NAME = "nf_unsw_nb15_v2_binary_anonymous"
+    DATASET_NAME = "nsl_kdd"
     # TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
-    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Train.csv"
+    TRAIN_PATH = "datasets/NSL-KDD/KDDTrain+.txt"
     # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Test.csv"
-    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
+    TEST_PATH = "datasets/NSL-KDD/KDDTest+.txt"
 
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000
@@ -65,12 +61,12 @@ def binary_classification(epoch_steps):
     min_values, max_values = utilities.min_max_values(df_train, prop, BOUND)
     unique_values = utilities.unique_values(df_train, prop, CATEGORICAL_LEVEL)
 
-    with open("datasets/NF-UNSW-NB15-V2/train_meta.pkl", "wb") as f:
-        pickle.dump((min_values, max_values, unique_values), f)
+    # with open("datasets/NF-UNSW-NB15-V2/train_meta.pkl", "wb") as f:
+    #     pickle.dump((min_values, max_values, unique_values), f)
 
-    @trans_builder.add_step(order=1)
-    def base_pre_processing(dataset):
-        return utilities.base_pre_processing(dataset, prop, BOUND)
+    # @trans_builder.add_step(order=1)
+    # def base_pre_processing(dataset):
+    #     return utilities.base_pre_processing(dataset, prop, BOUND)
 
     @trans_builder.add_step(order=2)
     def log_pre_processing(dataset):
@@ -176,7 +172,8 @@ def binary_classification(epoch_steps):
     pos_weight = torch.tensor([class_proportions.iloc[0] / class_proportions.iloc[1]], dtype=torch.float32, device=device)
     logging.info(f"pos_weight: {pos_weight}")
 
-    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    #criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(
         model.parameters(),
         lr=LR,
@@ -317,5 +314,7 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    for i in range(40, 150, 10):
-        binary_classification(i)
+    binary_classification(500)
+
+    # for i in range(40, 150, 10):
+    #     binary_classification(i)

@@ -19,13 +19,13 @@ from nids_framework.model import transformer, loss
 from nids_framework.training import trainer, metrics
 
 
-def self_supervised_training():
+def pre_training():
     CONFIG_PATH = "configs/dataset_properties.ini"
-    DATASET_NAME = "nf_unsw_nb15_v2_binary_anonymous"
-    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
-    # TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Train.csv"
-    # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Test.csv"
-    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
+    DATASET_NAME = "nsl_kdd"
+    #TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
+    #TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
+    TRAIN_PATH = "datasets/NSL-KDD/KDDTrain+.txt"
+    TEST_PATH = "datasets/NSL-KDD/KDDTest+.txt"
 
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000
@@ -50,16 +50,16 @@ def self_supervised_training():
     prop = named_prop.get_properties(DATASET_NAME)
 
     df_train = pd.read_csv(TRAIN_PATH)
-    df_test = pd.read_csv(TEST_PATH, nrows=5000)
+    df_test = pd.read_csv(TEST_PATH)
 
     trans_builder = transformation_builder.TransformationBuilder()
 
     min_values, max_values = utilities.min_max_values(df_train, prop, BOUND)
     unique_values = utilities.unique_values(df_train, prop, CATEGORICAL_LEVEL)
 
-    @trans_builder.add_step(order=1)
-    def base_pre_processing(dataset):
-        return utilities.base_pre_processing(dataset, prop, BOUND)
+    # @trans_builder.add_step(order=1)
+    # def base_pre_processing(dataset):
+    #     return utilities.base_pre_processing(dataset, prop, BOUND)
 
     @trans_builder.add_step(order=2)
     def log_pre_processing(dataset):
@@ -170,17 +170,17 @@ def self_supervised_training():
         train_data_loader=train_dataloader,
         epoch_steps=EPOCH_STEPS,
     )
-    model.encoder.save_model_weights(f"saves/self_supervised_encoder.pt")
+    model.encoder.save_model_weights(f"saves/KDD/pre_trained_encoder.pt")
     train.test(test_dataloader)
 
 
-def self_supervised_finetuning(epoch_steps):
+def finetuning(epoch_steps):
     CONFIG_PATH = "configs/dataset_properties.ini"
-    DATASET_NAME = "nf_unsw_nb15_v2_binary_anonymous"
-    # TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
-    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Train.csv"
-    # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Test.csv"
-    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-DoS-Test.csv"
+    DATASET_NAME = "nsl_kdd"
+    #TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
+    #TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
+    TRAIN_PATH = "datasets/NSL-KDD/KDDTrain+.txt"
+    TEST_PATH = "datasets/NSL-KDD/KDDTest+.txt"
 
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000
@@ -209,12 +209,12 @@ def self_supervised_finetuning(epoch_steps):
     min_values, max_values = utilities.min_max_values(df_train, prop, BOUND)
     unique_values = utilities.unique_values(df_train, prop, CATEGORICAL_LEVEL)
 
-    with open("datasets/NF-UNSW-NB15-V2/train_meta.pkl", "wb") as f:
-        pickle.dump((min_values, max_values, unique_values), f)
+    # with open("datasets/NF-UNSW-NB15-V2/train_meta.pkl", "wb") as f:
+    #     pickle.dump((min_values, max_values, unique_values), f)
 
-    @trans_builder.add_step(order=1)
-    def base_pre_processing(dataset):
-        return utilities.base_pre_processing(dataset, prop, BOUND)
+    # @trans_builder.add_step(order=1)
+    # def base_pre_processing(dataset):
+    #     return utilities.base_pre_processing(dataset, prop, BOUND)
 
     @trans_builder.add_step(order=2)
     def log_pre_processing(dataset):
@@ -272,19 +272,19 @@ def self_supervised_finetuning(epoch_steps):
     train_dataset.set_categorical_transformation(transformations)
     test_dataset.set_categorical_transformation(transformations)
 
-    # train_sampler = samplers.RandomSlidingWindowSampler(
-    #     train_dataset, window_size=WINDOW_SIZE
-    # )
-    # test_sampler = samplers.RandomSlidingWindowSampler(
-    #     test_dataset, window_size=WINDOW_SIZE
-    # )
+    train_sampler = samplers.RandomSlidingWindowSampler(
+        train_dataset, window_size=WINDOW_SIZE
+    )
+    test_sampler = samplers.RandomSlidingWindowSampler(
+        test_dataset, window_size=WINDOW_SIZE
+    )
 
-    train_sampler = samplers.GroupWindowSampler(
-        train_dataset, WINDOW_SIZE, df_train, "IPV4_SRC_ADDR"
-    )
-    test_sampler = samplers.GroupWindowSampler(
-        test_dataset, WINDOW_SIZE, df_test, "IPV4_SRC_ADDR"
-    )
+    # train_sampler = samplers.GroupWindowSampler(
+    #     train_dataset, WINDOW_SIZE, df_train, "IPV4_SRC_ADDR"
+    # )
+    # test_sampler = samplers.GroupWindowSampler(
+    #     test_dataset, WINDOW_SIZE, df_test, "IPV4_SRC_ADDR"
+    # )
 
     train_dataloader = DataLoader(
         train_dataset,
@@ -309,7 +309,7 @@ def self_supervised_finetuning(epoch_steps):
         dropout=DROPOUT,
         window_size=WINDOW_SIZE,
     ).to(device)
-    encoder.load_model_weights("saves/self_supervised_encoder.pt")
+    encoder.load_model_weights("saves/KDD/pre_trained_encoder.pt")
 
     pre_trained_encoder = encoder
     for i, layer in enumerate(pre_trained_encoder.encoder.layers):
@@ -354,7 +354,7 @@ def self_supervised_finetuning(epoch_steps):
         train_data_loader=train_dataloader,
         epoch_steps=EPOCH_STEPS,
     )
-    model.save_model_weights(f"saves/self_supervised_tuned.pt")
+    model.save_model_weights(f"saves/tuned.pt")
 
     metric = metrics.BinaryClassificationMetric()
     train.test(test_dataloader, metric)
@@ -367,9 +367,8 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    #self_supervised_training()
-
-    self_supervised_finetuning(140)
+    self_supervised_training()
+    self_supervised_finetuning(500)
 
     # for i in range(40, 150, 10):
     #     self_supervised_finetuning(i)
