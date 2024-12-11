@@ -134,7 +134,10 @@ class Trainer:
 
         self.optimizer.zero_grad()
         outputs = self.model(inputs)
+
         loss = self.criterion(outputs, labels)
+        # loss = self.criterion(outputs)
+
         loss.backward()
         self.optimizer.step()
 

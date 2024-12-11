@@ -21,11 +21,11 @@ from nids_framework.training import trainer, metrics
 
 def pre_training():
     CONFIG_PATH = "configs/dataset_properties.ini"
-    DATASET_NAME = "nsl_kdd"
-    #TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
-    #TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
-    TRAIN_PATH = "datasets/NSL-KDD/KDDTrain+.txt"
-    TEST_PATH = "datasets/NSL-KDD/KDDTest+.txt"
+    DATASET_NAME = "nf_unsw_nb15_v2_binary"
+    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
+    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
+    # TRAIN_PATH = "datasets/NSL-KDD/KDDTrain+.txt"
+    # TEST_PATH = "datasets/NSL-KDD/KDDTest+.txt"
 
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000
@@ -40,8 +40,8 @@ def pre_training():
     LR = 0.0003
     WEIGHT_DECAY = 0.0005
 
-    N_EPOCH = 1
-    EPOCH_STEPS = 2000
+    N_EPOCH = 5
+    EPOCH_STEPS = 100
     # EPOCH_UNTIL_VALIDATION = 100
     # PATIENCE = 2
     # DELTA = 0.01
@@ -57,9 +57,9 @@ def pre_training():
     min_values, max_values = utilities.min_max_values(df_train, prop, BOUND)
     unique_values = utilities.unique_values(df_train, prop, CATEGORICAL_LEVEL)
 
-    # @trans_builder.add_step(order=1)
-    # def base_pre_processing(dataset):
-    #     return utilities.base_pre_processing(dataset, prop, BOUND)
+    @trans_builder.add_step(order=1)
+    def base_pre_processing(dataset):
+        return utilities.base_pre_processing(dataset, prop, BOUND)
 
     @trans_builder.add_step(order=2)
     def log_pre_processing(dataset):
@@ -145,7 +145,6 @@ def pre_training():
 
     model = transformer.TransformerAutoencoder(
         input_dim=input_dim,
-        border=train_dataset.get_border(),
         embed_dim=EMBED_DIM,
         num_heads=NUM_HEADS,
         num_layers=NUM_LAYERS,
@@ -157,7 +156,7 @@ def pre_training():
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logging.info(f"Total number of parameters: {total_params}")
 
-    criterion = loss.HybridReconstructionLoss(test_dataset.get_border())
+    criterion = loss.ReconstructionLoss()
     optimizer = optim.Adam(
         model.parameters(),
         lr=LR,
@@ -170,17 +169,17 @@ def pre_training():
         train_data_loader=train_dataloader,
         epoch_steps=EPOCH_STEPS,
     )
-    model.encoder.save_model_weights(f"saves/KDD/pre_trained_encoder.pt")
-    train.test(test_dataloader)
+    model.encoder.save_model_weights(f"saves/UNSW/pre_trained_encoder.pt")
+    #train.test(test_dataloader)
 
 
 def finetuning(epoch_steps):
     CONFIG_PATH = "configs/dataset_properties.ini"
-    DATASET_NAME = "nsl_kdd"
-    #TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
-    #TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
-    TRAIN_PATH = "datasets/NSL-KDD/KDDTrain+.txt"
-    TEST_PATH = "datasets/NSL-KDD/KDDTest+.txt"
+    DATASET_NAME = "nf_unsw_nb15_v2_binary"
+    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
+    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
+    # TRAIN_PATH = "datasets/NSL-KDD/KDDTrain+.txt"
+    # TEST_PATH = "datasets/NSL-KDD/KDDTest+.txt"
 
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000
@@ -212,9 +211,9 @@ def finetuning(epoch_steps):
     # with open("datasets/NF-UNSW-NB15-V2/train_meta.pkl", "wb") as f:
     #     pickle.dump((min_values, max_values, unique_values), f)
 
-    # @trans_builder.add_step(order=1)
-    # def base_pre_processing(dataset):
-    #     return utilities.base_pre_processing(dataset, prop, BOUND)
+    @trans_builder.add_step(order=1)
+    def base_pre_processing(dataset):
+        return utilities.base_pre_processing(dataset, prop, BOUND)
 
     @trans_builder.add_step(order=2)
     def log_pre_processing(dataset):
@@ -226,8 +225,8 @@ def finetuning(epoch_steps):
 
     @trans_builder.add_step(order=4)
     def binary_label_conversion(dataset):
-        #return utilities.binary_benign_label_conversion(dataset, prop)
-        return utilities.binary_label_conversion(dataset, prop)
+        return utilities.binary_benign_label_conversion(dataset, prop)
+        #return utilities.binary_label_conversion(dataset, prop)
     
     @trans_builder.add_step(order=5)
     def split_data_for_torch(dataset):
@@ -309,13 +308,13 @@ def finetuning(epoch_steps):
         dropout=DROPOUT,
         window_size=WINDOW_SIZE,
     ).to(device)
-    encoder.load_model_weights("saves/KDD/pre_trained_encoder.pt")
+    encoder.load_model_weights("saves/UNSW/pre_trained_encoder.pt")
 
     pre_trained_encoder = encoder
-    for i, layer in enumerate(pre_trained_encoder.encoder.layers):
-        if i <= 1: 
-            for param in layer.parameters():
-                param.requires_grad = False
+    # for i, layer in enumerate(pre_trained_encoder.encoder.layers):
+    #     if i <= 1: 
+    #         for param in layer.parameters():
+    #             param.requires_grad = False
 
     input_dim = next(iter(train_dataloader))[0].shape[-1]
     logging.info(f"Input dim: {input_dim}")
@@ -346,7 +345,6 @@ def finetuning(epoch_steps):
         weight_decay=WEIGHT_DECAY,
     )
 
-
     train = trainer.Trainer(model, criterion, optimizer)
     
     train.train(
@@ -354,7 +352,7 @@ def finetuning(epoch_steps):
         train_data_loader=train_dataloader,
         epoch_steps=EPOCH_STEPS,
     )
-    model.save_model_weights(f"saves/tuned.pt")
+    model.save_model_weights(f"saves/UNSW/tuned.pt")
 
     metric = metrics.BinaryClassificationMetric()
     train.test(test_dataloader, metric)
@@ -367,8 +365,8 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    self_supervised_training()
-    self_supervised_finetuning(500)
+    #pre_training()
+    finetuning(80)
 
     # for i in range(40, 150, 10):
     #     self_supervised_finetuning(i)

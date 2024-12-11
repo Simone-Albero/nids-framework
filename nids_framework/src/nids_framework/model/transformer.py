@@ -158,10 +158,10 @@ class TransformerDecoder(BaseModule):
             decoder_layer, num_layers=num_layers
         )
 
-    def forward(self, x: Tensor, memory: Tensor) -> Tensor:
+    def forward(self, encoded: Tensor, x: Tensor) -> Tensor:
         x = self.pos_encoder(x)
-        x = self.decoder(x, memory)
-        return x
+        decoded = self.decoder(x, encoded)
+        return decoded
 
 
 
@@ -201,44 +201,41 @@ class TransformerClassifier(BaseModule):
 
         return x
 
-
 class TransformerAutoencoder(BaseModule):
-
-    __slots__ = [
-        "embedding",
-        "encoder",
-        "reconstructor",
-        "dropout",
-        "border",
-    ]
-
     def __init__(
         self,
         input_dim: int,
-        border: int,
         embed_dim: int = 128,
         num_heads: int = 2,
         num_layers: int = 4,
         ff_dim: int = 64,
         dropout: float = 0.1,
         window_size: int = 10,
-    ) -> None:
+    ):
         super(TransformerAutoencoder, self).__init__()
+
         self.embedding = InputEmbedding(input_dim, embed_dim, dropout)
+
         self.encoder = TransformerEncoder(
-            embed_dim, num_heads, num_layers, ff_dim, dropout, window_size
+            embed_dim=embed_dim,
+            num_heads=num_heads,
+            num_layers=num_layers,
+            ff_dim=ff_dim,
+            dropout=dropout,
+            window_size=window_size,
         )
-        self.reconstructor = nn.Linear(embed_dim, input_dim)
-        self.dropout = nn.Dropout(dropout)
-        self.border = border
 
-    def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
+        self.decoder = TransformerDecoder(
+            embed_dim=embed_dim,
+            num_heads=num_heads,
+            num_layers=num_layers,
+            ff_dim=ff_dim,
+            dropout=dropout,
+            window_size=window_size,
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
         x = self.embedding(x)
-        x = self.encoder(x)
-
-        x_reconstructed = self.reconstructor(x)
-
-        reconstructed_numeric = x_reconstructed[:, :self.border]
-        reconstructed_categorical = x_reconstructed[:, self.border:]
-
-        return reconstructed_numeric, reconstructed_categorical
+        encoded = self.encoder(x)
+        decoded = self.decoder(encoded, x)
+        return decoded[..., -1], x[..., -1]

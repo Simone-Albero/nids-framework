@@ -63,7 +63,6 @@ class TabularDataset(Dataset):
         if self._target_transformation:
             target = self._target_transformation(target)
 
-        #categorical = categorical.float()
         features = torch.cat((numeric, categorical), dim=-1)
 
         return features, target[..., -1]
@@ -118,7 +117,6 @@ class TabularReconstructionDataset(Dataset):
         if self._categorical_transformation:
             categorical = self._categorical_transformation(categorical)
 
-        #categorical = categorical.float()
         originial_features = torch.cat((numeric, categorical), dim=-1)
 
         masked_features = originial_features
@@ -136,5 +134,3 @@ class TabularReconstructionDataset(Dataset):
     def set_masking_transformation(self, transformations: List[Callable]) -> None:
         self._masking_transformation = Compose(transformations)
 
-    def get_border(self) -> int:
-        return self._numeric_data.shape[1]
