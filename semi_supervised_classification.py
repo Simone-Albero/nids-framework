@@ -41,7 +41,7 @@ def pre_training():
     WEIGHT_DECAY = 0.0005
 
     N_EPOCH = 5
-    EPOCH_STEPS = 100
+    EPOCH_STEPS = 50
     # EPOCH_UNTIL_VALIDATION = 100
     # PATIENCE = 2
     # DELTA = 0.01
@@ -156,7 +156,7 @@ def pre_training():
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logging.info(f"Total number of parameters: {total_params}")
 
-    criterion = loss.ReconstructionLoss()
+    criterion = loss.CosineSimilarityLoss()
     optimizer = optim.Adam(
         model.parameters(),
         lr=LR,
@@ -170,6 +170,7 @@ def pre_training():
         epoch_steps=EPOCH_STEPS,
     )
     model.encoder.save_model_weights(f"saves/UNSW/pre_trained_encoder.pt")
+    model.embedding.save_model_weights(f"saves/UNSW/pre_trained_embedding.pt")
     #train.test(test_dataloader)
 
 
@@ -300,7 +301,10 @@ def finetuning(epoch_steps):
         shuffle=False,
     )
 
-    encoder = transformer.TransformerEncoder(
+    input_dim = next(iter(train_dataloader))[0].shape[-1]
+    logging.info(f"Input dim: {input_dim}")
+
+    pre_trained_encoder = transformer.TransformerEncoder(
         embed_dim=EMBED_DIM,
         num_heads=NUM_HEADS,
         num_layers=NUM_LAYERS,
@@ -308,16 +312,18 @@ def finetuning(epoch_steps):
         dropout=DROPOUT,
         window_size=WINDOW_SIZE,
     ).to(device)
-    encoder.load_model_weights("saves/UNSW/pre_trained_encoder.pt")
+    pre_trained_encoder.load_model_weights("saves/UNSW/pre_trained_encoder.pt")
 
-    pre_trained_encoder = encoder
+    pre_trained_embedding = transformer.InputEmbedding(input_dim, EMBED_DIM, DROPOUT).to(device)
+    pre_trained_embedding.load_model_weights("saves/UNSW/pre_trained_embedding.pt")
+
     # for i, layer in enumerate(pre_trained_encoder.encoder.layers):
     #     if i <= 1: 
     #         for param in layer.parameters():
     #             param.requires_grad = False
 
-    input_dim = next(iter(train_dataloader))[0].shape[-1]
-    logging.info(f"Input dim: {input_dim}")
+    # for param in pre_trained_embedding.parameters():
+    #     param.requires_grad = False
 
     model = transformer.TransformerClassifier(
         num_classes=1,
@@ -330,6 +336,7 @@ def finetuning(epoch_steps):
         window_size=WINDOW_SIZE,
     ).to(device)
     model.encoder = pre_trained_encoder
+    model.embedding = pre_trained_embedding
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logging.info(f"Total number of parameters: {total_params}")
@@ -366,7 +373,7 @@ if __name__ == "__main__":
     )
 
     #pre_training()
-    finetuning(200)
+    finetuning(60)
 
     # for i in range(40, 150, 10):
     #     self_supervised_finetuning(i)

@@ -183,7 +183,7 @@ def binary_classification(epoch_steps):
         train_data_loader=train_dataloader,
         epoch_steps=EPOCH_STEPS,
     )
-    model.save_model_weights(f"saves/{prop.benign_label}.pt")
+    #model.save_model_weights(f"saves/{prop.benign_label}.pt")
 
     metric = metrics.BinaryClassificationMetric()
     train.test(test_dataloader, metric)
@@ -196,7 +196,7 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    binary_classification(80)
+    binary_classification(60)
 
     # for i in range(40, 150, 10):
     #     binary_classification(i)
