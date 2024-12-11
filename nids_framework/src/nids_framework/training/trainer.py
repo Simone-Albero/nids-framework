@@ -130,13 +130,19 @@ class Trainer:
         return epoch_loss / total_steps
 
     def _train_one_batch(self, batch: Tuple[torch.Tensor, torch.Tensor]) -> float:
-        inputs, labels = batch
+
+        if len(batch) == 2:
+            inputs, labels = batch
+        else:
+            inputs, labels = batch, None
 
         self.optimizer.zero_grad()
         outputs = self.model(inputs)
 
-        loss = self.criterion(outputs, labels)
-        # loss = self.criterion(outputs)
+        if labels is not None:
+            loss = self.criterion(outputs, labels)
+        else:
+            loss = self.criterion(outputs)
 
         loss.backward()
         self.optimizer.step()
@@ -149,9 +155,19 @@ class Trainer:
 
         self.model.eval()
         with torch.no_grad():
-            for inputs, labels in tqdm(data_loader, desc="Validating"):
+            for batch in tqdm(data_loader, desc="Validating"):
+                if len(batch) == 2:
+                    inputs, labels = batch
+                else:
+                    inputs, labels = batch[0], None
+
                 outputs = self.model(inputs)
-                loss = self.criterion(outputs, labels)
+
+                if labels is not None:
+                    loss = self.criterion(outputs, labels)
+                else:
+                    loss = self.criterion(outputs)
+
                 validation_loss += loss.item()
 
         validation_loss /= len(data_loader)
@@ -160,20 +176,28 @@ class Trainer:
         logging.info(f"Validation loss: {validation_loss:.6f}.\n")
         return validation_loss
 
-    #@trace_stats()
     def test(self, data_loader: DataLoader, metric: Optional[Metric] = None) -> None:
         logging.info(f"Starting test loop...")
         test_loss = 0.0
 
         self.model.eval()
         with torch.no_grad():
-            for inputs, labels in tqdm(data_loader, desc="Testing"):
+            for batch in tqdm(data_loader, desc="Testing"):
+                if len(batch) == 2:
+                    inputs, labels = batch
+                else:
+                    inputs, labels = batch[0], None
+
                 outputs = self.model(inputs)
 
-                loss = self.criterion(outputs, labels)
-                test_loss += loss.item()
-                if metric is not None:
-                    metric.step(outputs, labels)
+                if labels is not None:
+                    loss = self.criterion(outputs, labels)
+                    test_loss += loss.item()
+                    if metric is not None:
+                        metric.step(outputs, labels)
+                else:
+                    loss = self.criterion(outputs)
+                    test_loss += loss.item()
 
         test_loss /= len(data_loader)
         logging.info("Done with testing.")

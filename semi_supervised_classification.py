@@ -90,16 +90,16 @@ def pre_training():
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-    train_dataset = tabular_datasets.TabularReconstructionDataset(
+    train_dataset = tabular_datasets.TabularDataset(
         X_train[prop.numeric_features],
         X_train[prop.categorical_features],
-        device
+        device = device
     )
 
-    test_dataset = tabular_datasets.TabularReconstructionDataset(
+    test_dataset = tabular_datasets.TabularDataset(
         X_test[prop.numeric_features], 
         X_test[prop.categorical_features], 
-        device
+        device = device
     )
 
     @trans_builder.add_step(order=1)
@@ -366,7 +366,7 @@ if __name__ == "__main__":
     )
 
     #pre_training()
-    finetuning(80)
+    finetuning(200)
 
     # for i in range(40, 150, 10):
     #     self_supervised_finetuning(i)
