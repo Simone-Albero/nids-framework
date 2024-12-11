@@ -196,7 +196,7 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    binary_classification(60)
+    # binary_classification(60)
 
-    # for i in range(40, 150, 10):
-    #     binary_classification(i)
+    for i in range(45, 130, 5):
+        binary_classification(i)

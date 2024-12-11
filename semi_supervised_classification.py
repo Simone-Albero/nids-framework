@@ -373,7 +373,7 @@ if __name__ == "__main__":
     )
 
     #pre_training()
-    finetuning(60)
+    #finetuning(50)
 
-    # for i in range(40, 150, 10):
-    #     self_supervised_finetuning(i)
+    for i in range(45, 130, 5):
+        finetuning(i)
