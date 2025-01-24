@@ -19,11 +19,16 @@ from nids_framework.model import transformer, loss
 from nids_framework.training import trainer, metrics
 
 
-def pre_training():
+def self_supervised_pretraining(epoch, epoch_steps):
     CONFIG_PATH = "configs/dataset_properties.ini"
-    DATASET_NAME = "nf_unsw_nb15_v2_binary"
-    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
-    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
+
+    DATASET_NAME = "nf_ton_iot_v2_anonymous"
+    TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
+    TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
+
+    # TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
+    # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
+
     # TRAIN_PATH = "datasets/NSL-KDD/KDDTrain+.txt"
     # TEST_PATH = "datasets/NSL-KDD/KDDTest+.txt"
 
@@ -40,8 +45,8 @@ def pre_training():
     LR = 0.0003
     WEIGHT_DECAY = 0.0005
 
-    N_EPOCH = 5
-    EPOCH_STEPS = 50
+    N_EPOCH = epoch
+    EPOCH_STEPS = epoch_steps
     # EPOCH_UNTIL_VALIDATION = 100
     # PATIENCE = 2
     # DELTA = 0.01
@@ -76,8 +81,8 @@ def pre_training():
     transformations = trans_builder.build()
 
     proc = processor.Processor(transformations)
-    X_train, y_train = proc.apply(df_train)
-    X_test, y_test = proc.apply(df_test)
+    X_train, _ = proc.apply(df_train)
+    X_test, _ = proc.apply(df_test)
 
     device = "cpu"
     if torch.cuda.is_available():
@@ -169,16 +174,21 @@ def pre_training():
         train_data_loader=train_dataloader,
         epoch_steps=EPOCH_STEPS,
     )
-    model.encoder.save_model_weights(f"saves/UNSW/pre_trained_encoder.pt")
-    model.embedding.save_model_weights(f"saves/UNSW/pre_trained_embedding.pt")
+    model.encoder.save_model_weights(f"saves/ToN/pre_trained_encoder.pt")
+    model.embedding.save_model_weights(f"saves/ToN/pre_trained_embedding.pt")
     #train.test(test_dataloader)
 
 
-def finetuning(epoch_steps):
+def finetuning(epoch, epoch_steps):
     CONFIG_PATH = "configs/dataset_properties.ini"
-    DATASET_NAME = "nf_unsw_nb15_v2_binary"
-    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
-    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
+
+    DATASET_NAME = "nf_ton_iot_v2_anonymous"
+    TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
+    TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
+
+    # TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
+    # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
+
     # TRAIN_PATH = "datasets/NSL-KDD/KDDTrain+.txt"
     # TEST_PATH = "datasets/NSL-KDD/KDDTest+.txt"
 
@@ -195,14 +205,14 @@ def finetuning(epoch_steps):
     LR = 0.0003
     WEIGHT_DECAY = 0.0005
 
-    N_EPOCH = 1
+    N_EPOCH = epoch
     EPOCH_STEPS = epoch_steps
 
     named_prop = properties.NamedDatasetProperties(CONFIG_PATH)
     prop = named_prop.get_properties(DATASET_NAME)
 
     df_train = pd.read_csv(TRAIN_PATH)
-    df_test = pd.read_csv(TEST_PATH)
+    df_test = pd.read_csv(TEST_PATH, nrows=50000)
 
     trans_builder = transformation_builder.TransformationBuilder()
 
@@ -312,10 +322,10 @@ def finetuning(epoch_steps):
         dropout=DROPOUT,
         window_size=WINDOW_SIZE,
     ).to(device)
-    pre_trained_encoder.load_model_weights("saves/UNSW/pre_trained_encoder.pt")
+    pre_trained_encoder.load_model_weights("saves/ToN/pre_trained_encoder.pt")
 
     pre_trained_embedding = transformer.InputEmbedding(input_dim, EMBED_DIM, DROPOUT).to(device)
-    pre_trained_embedding.load_model_weights("saves/UNSW/pre_trained_embedding.pt")
+    pre_trained_embedding.load_model_weights("saves/ToN/pre_trained_embedding.pt")
 
     # for i, layer in enumerate(pre_trained_encoder.encoder.layers):
     #     if i <= 1: 
@@ -342,7 +352,7 @@ def finetuning(epoch_steps):
     logging.info(f"Total number of parameters: {total_params}")
 
     class_proportions = y_train.value_counts(normalize=True).sort_index()
-    pos_weight = torch.tensor([class_proportions.iloc[0] / class_proportions.iloc[1]], dtype=torch.float32, device=device)
+    pos_weight = torch.tensor(class_proportions.iloc[0] / class_proportions.iloc[1], dtype=torch.float32, device=device)
     logging.info(f"pos_weight: {pos_weight}")
 
     criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
@@ -359,7 +369,7 @@ def finetuning(epoch_steps):
         train_data_loader=train_dataloader,
         epoch_steps=EPOCH_STEPS,
     )
-    model.save_model_weights(f"saves/UNSW/tuned.pt")
+    #model.save_model_weights(f"saves/UNSW/tuned.pt")
 
     metric = metrics.BinaryClassificationMetric()
     train.test(test_dataloader, metric)
@@ -372,8 +382,13 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    #pre_training()
-    #finetuning(50)
+    #self_supervised_pretraining(15, 30)
+    #finetuning(5, 100)
 
-    for i in range(45, 130, 5):
-        finetuning(i)
+    #self_supervised_pretraining(15, 30)
+    for i in range(1, 6, 1):
+        finetuning(1, 10*i)
+
+    # for i in range(1, 15):
+    #     self_supervised_pretraining(i, 30)
+    #     finetuning(50)

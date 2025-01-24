@@ -20,7 +20,7 @@ class RandomSlidingWindowSampler(Sampler[List[int]]):
         self._dataset = dataset
         self._indices: List[int] = list(range(len(dataset) - window_size + 1))
         self._tot_samples: int = len(self._indices)
-        random.seed(42)
+        random.seed(13)
 
     def __iter__(self) -> Iterator[List[int]]:
         shuffled_indices = self._indices[:]

@@ -19,13 +19,17 @@ from nids_framework.model import transformer
 from nids_framework.training import trainer, metrics
 
 
-def binary_classification(epoch_steps):
+def binary_classification(epoch, epoch_steps):
     CONFIG_PATH = "configs/dataset_properties.ini"
 
-    DATASET_NAME = "nf_unsw_nb15_v2_binary"
-    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
+    DATASET_NAME = "nf_ton_iot_v2_anonymous"
+    TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
+    TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
+    
+    # TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
+    # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
+    
     # TRAIN_PATH = "datasets/NSL-KDD/KDDTrain+.txt"
-    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
     # TEST_PATH = "datasets/NSL-KDD/KDDTest+.txt"
 
     CATEGORICAL_LEVEL = 32
@@ -41,7 +45,7 @@ def binary_classification(epoch_steps):
     LR = 0.0003
     WEIGHT_DECAY = 0.0005
 
-    N_EPOCH = 1
+    N_EPOCH = epoch
     EPOCH_STEPS = epoch_steps #1000
     # EPOCH_UNTIL_VALIDATION = 100
     # PATIENCE = 2
@@ -51,7 +55,7 @@ def binary_classification(epoch_steps):
     prop = named_prop.get_properties(DATASET_NAME)
 
     df_train = pd.read_csv(TRAIN_PATH)
-    df_test = pd.read_csv(TEST_PATH)
+    df_test = pd.read_csv(TEST_PATH, nrows=50000)
 
     trans_builder = transformation_builder.TransformationBuilder()
 
@@ -166,7 +170,7 @@ def binary_classification(epoch_steps):
     logging.info(f"Total number of parameters: {total_params}")
 
     class_proportions = y_train.value_counts(normalize=True).sort_index()
-    pos_weight = torch.tensor([class_proportions.iloc[0] / class_proportions.iloc[1]], dtype=torch.float32, device=device)
+    pos_weight = torch.tensor(class_proportions.iloc[0] / class_proportions.iloc[1], dtype=torch.float32, device=device)
     logging.info(f"pos_weight: {pos_weight}")
 
     criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
@@ -196,7 +200,8 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    # binary_classification(60)
+    #binary_classification(1, 500)
 
-    for i in range(45, 130, 5):
-        binary_classification(i)
+    for i in range(3, 6, 1):
+        binary_classification(1, 10*i)
+

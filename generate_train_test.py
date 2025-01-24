@@ -28,16 +28,18 @@ def generate_train_test(train_fraction=0.85):
     logging.info(f"Test saved in: {test_path}")
 
 def generate_custom():
-    file_path = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Test.csv"
+    file_path = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
 
     df = pd.read_csv(file_path)
     custom_df = pd.DataFrame()
-    #attacks = df["Attack"].unique()
-    #attacks = attacks[(attacks != "Benign")]
-    attacks = ["DoS", "Reconnaissance", "Fuzzers"]
+
+    attacks = df["Attack"].unique()
+    attacks = attacks[(attacks != "Benign")]
+    #attacks = ["DoS", "Reconnaissance", "Fuzzers"]
     benign_rows = df[df["Attack"] == "Benign"]
+
     added_indices = set()
-    WINDOW = 2 
+    WINDOW = 10 
     ATTACK_SAMPLES = 500 
 
     for label in tqdm.tqdm(attacks):
@@ -68,7 +70,7 @@ def generate_custom():
     custom_df = custom_df.sort_index()
     print(custom_df["Attack"].value_counts())
 
-    output_path = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
+    output_path = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Balanced-Test.csv"
     custom_df.to_csv(output_path, index=False)
 
 
