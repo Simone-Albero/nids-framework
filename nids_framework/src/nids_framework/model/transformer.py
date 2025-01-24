@@ -61,7 +61,7 @@ class ClassificationHead(BaseModule):
         self.num_classes = num_classes
 
     def forward(self, x: Tensor) -> Tensor:
-        x = x[..., -1, :]  # last token classification
+        x = x[:, -1, :]  # last token classification
         x = self.dropout(x)
         x = self.classifier(x)
 
@@ -202,6 +202,14 @@ class TransformerClassifier(BaseModule):
         return x
 
 class TransformerAutoencoder(BaseModule):
+
+    __slots__ = [
+        "embedding",
+        "encoder",
+        "decoder",
+        "noise_factor",
+    ]
+        
     def __init__(
         self,
         input_dim: int,
@@ -211,6 +219,7 @@ class TransformerAutoencoder(BaseModule):
         ff_dim: int = 64,
         dropout: float = 0.1,
         window_size: int = 10,
+        noise_factor: float = 0.1
     ):
         super(TransformerAutoencoder, self).__init__()
 
@@ -234,8 +243,14 @@ class TransformerAutoencoder(BaseModule):
             window_size=window_size,
         )
 
+        self.noise_factor = noise_factor
+
     def forward(self, x: Tensor) -> Tensor:
         x = self.embedding(x)
-        encoded = self.encoder(x)
-        decoded = self.decoder(encoded, x)
-        return decoded[..., -1], x[..., -1]
+
+        x_noisy = x.clone()
+        x_noisy[:, -1, :] += self.noise_factor * torch.randn_like(x[:, -1, :])
+        
+        encoded = self.encoder(x_noisy)
+        decoded = self.decoder(encoded, x_noisy)
+        return decoded[:, -1, :], x[:, -1, :]
