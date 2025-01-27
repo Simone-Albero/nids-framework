@@ -26,6 +26,7 @@ def self_supervised_pretraining(epoch, epoch_steps):
     TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
     TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
 
+    # DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
     # TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
     # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
 
@@ -183,11 +184,9 @@ def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
     TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
     TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
 
+    # DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
     # TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
     # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
-
-    # TRAIN_PATH = "datasets/NSL-KDD/KDDTrain+.txt"
-    # TEST_PATH = "datasets/NSL-KDD/KDDTest+.txt"
 
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000

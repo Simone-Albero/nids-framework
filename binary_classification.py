@@ -26,6 +26,7 @@ def binary_classification(epoch, epoch_steps, metric_path = "logs/binary_metrics
     TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
     TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
     
+    # DATASET_NAME = "nf_unsw_nb15_v2_anonymous"    
     # TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
     # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
 
