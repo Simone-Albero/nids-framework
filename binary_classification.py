@@ -19,7 +19,7 @@ from nids_framework.model import transformer
 from nids_framework.training import trainer, metrics
 
 
-def binary_classification(epoch, epoch_steps):
+def binary_classification(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
     CONFIG_PATH = "configs/dataset_properties.ini"
 
     DATASET_NAME = "nf_ton_iot_v2_anonymous"
@@ -28,9 +28,6 @@ def binary_classification(epoch, epoch_steps):
     
     # TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
     # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
-    
-    # TRAIN_PATH = "datasets/NSL-KDD/KDDTrain+.txt"
-    # TEST_PATH = "datasets/NSL-KDD/KDDTest+.txt"
 
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000
@@ -55,7 +52,7 @@ def binary_classification(epoch, epoch_steps):
     prop = named_prop.get_properties(DATASET_NAME)
 
     df_train = pd.read_csv(TRAIN_PATH)
-    df_test = pd.read_csv(TEST_PATH, nrows=50000)
+    df_test = pd.read_csv(TEST_PATH)
 
     trans_builder = transformation_builder.TransformationBuilder()
 
@@ -191,6 +188,7 @@ def binary_classification(epoch, epoch_steps):
 
     metric = metrics.BinaryClassificationMetric()
     train.test(test_dataloader, metric)
+    metric.save(metric_path)
 
 if __name__ == "__main__":
     debug_level = logging.INFO
@@ -200,8 +198,8 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    #binary_classification(1, 500)
+    binary_classification(1, 200)
 
-    for i in range(3, 6, 1):
-        binary_classification(1, 10*i)
+    # for i in range(1, 6, 1):
+    #     binary_classification(1, 10*i)
 

@@ -206,4 +206,4 @@ class Trainer:
         if metric is not None:
             metric.compute_metrics()
             logging.info(f"{metric}\n")
-            metric.save()
+            #metric.save()

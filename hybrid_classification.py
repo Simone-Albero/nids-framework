@@ -29,9 +29,6 @@ def self_supervised_pretraining(epoch, epoch_steps):
     # TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
     # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
 
-    # TRAIN_PATH = "datasets/NSL-KDD/KDDTrain+.txt"
-    # TEST_PATH = "datasets/NSL-KDD/KDDTest+.txt"
-
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000
 
@@ -179,7 +176,7 @@ def self_supervised_pretraining(epoch, epoch_steps):
     #train.test(test_dataloader)
 
 
-def finetuning(epoch, epoch_steps):
+def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
     CONFIG_PATH = "configs/dataset_properties.ini"
 
     DATASET_NAME = "nf_ton_iot_v2_anonymous"
@@ -373,6 +370,7 @@ def finetuning(epoch, epoch_steps):
 
     metric = metrics.BinaryClassificationMetric()
     train.test(test_dataloader, metric)
+    metric.save(metric_path)
 
 if __name__ == "__main__":
     debug_level = logging.INFO

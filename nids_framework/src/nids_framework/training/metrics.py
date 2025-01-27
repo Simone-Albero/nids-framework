@@ -111,8 +111,10 @@ class BinaryClassificationMetric(Metric):
 
     def _write_metrics(self, file_handle) -> None:
         file_handle.write(
-            f"{self.precision},{self.recall},{self.f1},{self.balanced_accuracy},{self._confusion_matrix[0, 0]},{self._confusion_matrix[0, 1]},{self._confusion_matrix[1, 0]},{self._confusion_matrix[1, 1]}\n"
-        )
+        f"{self.precision:.3f},{self.recall:.3f},{self.f1:.3f},{self.balanced_accuracy:.3f},"
+        f"{self._confusion_matrix[0, 0]},{self._confusion_matrix[0, 1]},"
+        f"{self._confusion_matrix[1, 0]},{self._confusion_matrix[1, 1]}\n"
+    )
 
 
 class MulticlassClassificationMetric(Metric):
@@ -205,5 +207,5 @@ class MulticlassClassificationMetric(Metric):
 
         total_support = np.sum(np.sum(self._confusion_matrix, axis=1))
         file_handle.write(
-            f"Weighted,{self.weighted_precision:.4f},{self.weighted_recall:.4f},{self.weighted_f1:.4f},{total_support}\n"
+            f"Weighted,{self.weighted_precision:.3f},{self.weighted_recall:.3f},{self.weighted_f1:.3f},{total_support}\n"
         )
