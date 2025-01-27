@@ -5,27 +5,29 @@ import os
 from rich.logging import RichHandler
 import tqdm
 
-def generate_train_test(train_fraction=0.85):
-    dataset_name = "NF-UNSW-NB15-V2"
-    df_path = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2.csv"
-    output_dir = "datasets/NF-UNSW-NB15-V2"
+import os
+import pandas as pd
+import logging
 
+def generate_train_test(train_fraction=0.8, dataset_name="NF-ToN-IoT-V2", df_path="datasets/NF-ToN-IoT-V2/NF-ToN-IoT-v2.csv", output_dir="datasets/NF-ToN-IoT-v2"):
     df = pd.read_csv(df_path)
+    
     train_size = int(len(df) * train_fraction)
     
-    df_train = df.iloc[:train_size]
-    df_test = df.iloc[train_size:]
+    df_train = df.head(train_size)
+    df_test = df.tail(len(df) - train_size)
 
     os.makedirs(output_dir, exist_ok=True)
 
-    train_path = os.path.join(output_dir, f"{dataset_name}_train.csv")
-    test_path = os.path.join(output_dir, f"{dataset_name}_test.csv")
+    train_path = os.path.join(output_dir, f"{dataset_name}-Train.csv")
+    test_path = os.path.join(output_dir, f"{dataset_name}-Test.csv")
 
     df_train.to_csv(train_path, index=False)
-    logging.info(f"Train saved in: {train_path}")
+    logging.info(f"Training set saved to: {train_path}")
     
     df_test.to_csv(test_path, index=False)
-    logging.info(f"Test saved in: {test_path}")
+    logging.info(f"Testing set saved to: {test_path}")
+
 
 def generate_custom():
     file_path = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
@@ -82,4 +84,4 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    generate_custom()
+    generate_train_test()
