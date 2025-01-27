@@ -22,13 +22,13 @@ from nids_framework.training import trainer, metrics
 def self_supervised_pretraining(epoch, epoch_steps):
     CONFIG_PATH = "configs/dataset_properties.ini"
 
-    DATASET_NAME = "nf_ton_iot_v2_anonymous"
-    TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
-    TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
+    # DATASET_NAME = "nf_ton_iot_v2_anonymous"
+    # TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
+    # TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
 
-    # DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
-    # TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
-    # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
+    DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
+    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
+    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
 
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000
@@ -172,21 +172,21 @@ def self_supervised_pretraining(epoch, epoch_steps):
         train_data_loader=train_dataloader,
         epoch_steps=EPOCH_STEPS,
     )
-    model.encoder.save_model_weights(f"saves/ToN/pre_trained_encoder.pt")
-    model.embedding.save_model_weights(f"saves/ToN/pre_trained_embedding.pt")
+    model.encoder.save_model_weights(f"saves/{DATASET_NAME}/pre_trained_encoder.pt")
+    model.embedding.save_model_weights(f"saves/{DATASET_NAME}/pre_trained_embedding.pt")
     #train.test(test_dataloader)
 
 
 def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
     CONFIG_PATH = "configs/dataset_properties.ini"
 
-    DATASET_NAME = "nf_ton_iot_v2_anonymous"
-    TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
-    TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
+    # DATASET_NAME = "nf_ton_iot_v2_anonymous"
+    # TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
+    # TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
 
-    # DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
-    # TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
-    # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
+    DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
+    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
+    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
 
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000
@@ -318,10 +318,10 @@ def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
         dropout=DROPOUT,
         window_size=WINDOW_SIZE,
     ).to(device)
-    pre_trained_encoder.load_model_weights("saves/ToN/pre_trained_encoder.pt")
+    pre_trained_encoder.load_model_weights(f"saves/{DATASET_NAME}/pre_trained_encoder.pt")
 
     pre_trained_embedding = transformer.InputEmbedding(input_dim, EMBED_DIM, DROPOUT).to(device)
-    pre_trained_embedding.load_model_weights("saves/ToN/pre_trained_embedding.pt")
+    pre_trained_embedding.load_model_weights(f"saves/{DATASET_NAME}/pre_trained_embedding.pt")
 
     # for i, layer in enumerate(pre_trained_encoder.encoder.layers):
     #     if i <= 1: 
@@ -379,13 +379,13 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    #self_supervised_pretraining(15, 30)
-    finetuning(1, 200)
+    # self_supervised_pretraining(25, 30)
+    finetuning(1, 300)
 
-    # self_supervised_pretraining(15, 30)
+    # self_supervised_pretraining(1, 450)
     # for i in range(1, 6, 1):
     #     finetuning(1, 10*i)
 
     # for i in range(1, 15):
     #     self_supervised_pretraining(i, 30)
-    #     finetuning(50)
+    #     finetuning(1, 200)
