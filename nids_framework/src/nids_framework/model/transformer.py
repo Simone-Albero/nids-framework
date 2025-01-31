@@ -16,15 +16,15 @@ class BaseModule(nn.Module):
         logging.info("Saving model weights...")
         os.makedirs(os.path.dirname(f_path), exist_ok=True)
 
-        curr_device = next(self.parameters()).device
-        self.to('cpu')
+        # curr_device = next(self.parameters()).device
+        # self.to('cpu')
         torch.save(self.state_dict(), f_path)
-        self.to(curr_device)
+        # self.to(curr_device)
         logging.info("Model weights saved successfully")
 
     def load_model_weights(self, f_path: str = "saves/model.pt", map_location: str = "cpu") -> None:
         logging.info("Loading model weights...")
-        self.load_state_dict(torch.load(f_path, map_location=map_location, weights_only=True), strict=False)
+        self.load_state_dict(torch.load(f_path, map_location=map_location, weights_only=True))
         logging.info("Model weights loaded successfully")
 
 
@@ -65,8 +65,9 @@ class ClassificationHead(BaseModule):
         x = self.dropout(x)
         x = self.classifier(x)
 
-        if self.num_classes == 1:
-            x = torch.sigmoid(x).squeeze(-1)
+        x = x.squeeze(-1) if self.num_classes == 1 else x
+        # x = torch.sigmoid(x).squeeze(-1)
+        
         # else:
         #     x = F.softmax(x, dim=-1)
 
@@ -107,7 +108,7 @@ class TransformerEncoder(BaseModule):
     ) -> None:
         super(TransformerEncoder, self).__init__()
         
-        self.pos_encoder = PositionalEncoding(embed_dim, window_size)
+        # self.pos_encoder = PositionalEncoding(embed_dim, window_size)
 
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=embed_dim,
@@ -121,7 +122,7 @@ class TransformerEncoder(BaseModule):
         )
 
     def forward(self, x: Tensor) -> Tensor:
-        x = self.pos_encoder(x)
+        # x = self.pos_encoder(x)
         x = self.encoder(x)
         return x
 
@@ -144,7 +145,7 @@ class TransformerDecoder(BaseModule):
     ) -> None:
         super(TransformerDecoder, self).__init__()
         
-        self.pos_encoder = PositionalEncoding(embed_dim, window_size)
+        # self.pos_encoder = PositionalEncoding(embed_dim, window_size)
 
         decoder_layer = nn.TransformerDecoderLayer(
             d_model=embed_dim,
@@ -159,7 +160,7 @@ class TransformerDecoder(BaseModule):
         )
 
     def forward(self, encoded: Tensor, x: Tensor) -> Tensor:
-        x = self.pos_encoder(x)
+        # x = self.pos_encoder(x)
         decoded = self.decoder(x, encoded)
         return decoded
 
@@ -249,7 +250,9 @@ class TransformerAutoencoder(BaseModule):
         x = self.embedding(x)
 
         x_noisy = x.clone()
-        x_noisy[:, -1, :] += self.noise_factor * torch.randn_like(x[:, -1, :])
+        # x_noisy[:, -1, :] += self.noise_factor * torch.randn_like(x[:, -1, :])
+        x_noisy = x + self.noise_factor * torch.randn_like(x)
+
         
         encoded = self.encoder(x_noisy)
         decoded = self.decoder(encoded, x_noisy)

@@ -22,13 +22,13 @@ from nids_framework.training import trainer, metrics
 def binary_classification(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
     CONFIG_PATH = "configs/dataset_properties.ini"
 
-    DATASET_NAME = "nf_ton_iot_v2_anonymous"
-    TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
-    TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
+    # DATASET_NAME = "nf_ton_iot_v2_anonymous"
+    # TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
+    # TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
     
-    # DATASET_NAME = "nf_unsw_nb15_v2_anonymous"    
-    # TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
-    # TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
+    DATASET_NAME = "nf_unsw_nb15_v2_anonymous"    
+    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
+    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Test.csv"
 
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000
@@ -199,8 +199,8 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    binary_classification(1, 200)
+    # binary_classification(1, 200)
 
-    # for i in range(1, 6, 1):
-    #     binary_classification(1, 10*i)
+    for i in range(1, 11, 1):
+        binary_classification(1, 50*i, "logs/baseline.csv")
 

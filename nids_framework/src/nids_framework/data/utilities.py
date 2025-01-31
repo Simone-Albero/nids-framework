@@ -29,9 +29,10 @@ def unique_values(
     df: pd.DataFrame, properties: DatasetProperties, categorical_levels: int
 ) -> Dict[str, List[Any]]:
     unique_values = {}
+    levels = max(1, categorical_levels - 1)
 
     for col in properties.categorical_features:
-        uniques = df[col].value_counts().index[: (categorical_levels - 1)].tolist()
+        uniques = df[col].value_counts().index[: levels].tolist()
         unique_values[col] = uniques
 
     return unique_values
@@ -50,42 +51,18 @@ def labels_mapping(
     
     return mapping, reverse
 
+
 def base_pre_processing(
     df: pd.DataFrame,
     properties: DatasetProperties,
     bound: int,
 ) -> pd.DataFrame:
     logging.debug(f"Bounding numeric features to {bound}...")
-
     df_copy = df.copy()
-
-    for col in properties.numeric_features:
-        column_values = df_copy[col]
-        column_values.replace([np.inf, -np.inf, np.nan], 0, inplace=True)
-        column_values.clip(lower=-bound, upper=bound, inplace=True)
-        df_copy[col] = column_values.astype("float32")
-
+    df_copy[properties.numeric_features] = df_copy[properties.numeric_features].apply(
+        lambda x: np.clip(x.fillna(0).replace([np.inf, -np.inf], 0), -bound, bound).astype("float32")
+    )
     return df_copy
-
-
-def base_pre_processing_row(
-    row: pd.Series,
-    properties: DatasetProperties,
-    bound: int,
-) -> pd.Series:
-    logging.debug(f"Bounding numeric features to {bound} for a single row...")
-
-    row_copy = row.copy()
-
-    for col in properties.numeric_features:
-        if col in row_copy:
-            value = row_copy[col]
-            if pd.isna(value) or value == np.inf or value == -np.inf:
-                row_copy[col] = 0
-            else:
-                row_copy[col] = np.clip(value, -bound, bound).astype("float32")
-
-    return row_copy
 
 
 def log_pre_processing(
@@ -101,52 +78,12 @@ def log_pre_processing(
     for col in properties.numeric_features:
         min_value = min_values[col]
         max_value = max_values[col]
-        gap = max_value - min_value
+        gap = max(max_value - min_value, 1e-9)
 
-        if gap == 0:
-            df_copy[col] = 0.0
-        else:
-            column_values = df_copy[col]
-            column_values.replace([np.inf, -np.inf, np.nan], 0, inplace=True)
-            column_values -= min_value
-            column_values = np.maximum(column_values, 0)
-            column_values = np.log(column_values + 1)
-            normalization_factor = 1.0 / np.log(gap + 1)
-            df_copy[col] = column_values * normalization_factor
-
+        df_copy[col] = df_copy[col].replace([np.inf, -np.inf, np.nan], 0)
+        df_copy[col] = np.maximum(df_copy[col] - min_value, 0)
+        df_copy[col] = np.log1p(df_copy[col]) / np.log1p(gap)
     return df_copy
-
-
-def log_pre_processing_row(
-    row: pd.Series,
-    properties: DatasetProperties,
-    min_values: Dict[str, float],
-    max_values: Dict[str, float],
-) -> pd.Series:
-    logging.debug("Normalizing numeric features with Log for a single row...")
-
-    row_copy = row.copy()
-
-    for col in properties.numeric_features:
-        if col in row_copy:
-            min_value = min_values[col]
-            max_value = max_values[col]
-            gap = max_value - min_value
-
-            if gap == 0:
-                row_copy[col] = 0.0
-            else:
-                value = row_copy[col]
-                if pd.isna(value) or value == np.inf or value == -np.inf:
-                    row_copy[col] = 0.0
-                else:
-                    value -= min_value
-                    value = np.maximum(value, 0)
-                    value = np.log(value + 1)
-                    normalization_factor = 1.0 / np.log(gap + 1)
-                    row_copy[col] = value * normalization_factor
-
-    return row_copy
 
 
 def categorical_pre_processing(
@@ -168,26 +105,6 @@ def categorical_pre_processing(
     return df_copy
 
 
-def categorical_pre_processing_row(
-    row: pd.Series,
-    properties: DatasetProperties,
-    unique_values: Dict[str, List[Any]],
-    categorical_levels: int,
-) -> pd.Series:
-    logging.debug(
-        f"Mapping {len(properties.categorical_features)} categorical features to {categorical_levels} numeric tags for a single row..."
-    )
-
-    row_copy = row.copy()
-
-    for col in properties.categorical_features:
-        if col in row_copy:
-            value_map = {val: idx + 1 for idx, val in enumerate(unique_values[col])}
-            row_copy[col] = value_map.get(row_copy[col], 0)
-
-    return row_copy
-
-
 def binary_benign_label_conversion(
     df: pd.DataFrame,
     properties: DatasetProperties,
@@ -195,26 +112,10 @@ def binary_benign_label_conversion(
     logging.debug("Converting class labels to numeric values...")
 
     df_copy = df.copy()
-
-    df_copy[properties.label] = ~(
-        df_copy[properties.label].astype("str") == properties.benign_label
-    )
-
+    df_copy[properties.label] = (df_copy[properties.label].astype(str) != properties.benign_label).astype(int)
+    
     return df_copy
 
-def binary_benign_label_conversion_row(
-    row: pd.Series,
-    properties: DatasetProperties,
-) -> pd.Series:
-    logging.debug("Converting class label to numeric value for a single row...")
-
-    row_copy = row.copy()
-
-    row_copy[properties.label] = not (
-        str(row_copy[properties.label]) == properties.benign_label
-    )
-
-    return row_copy
 
 def binary_label_conversion(
     df: pd.DataFrame,
@@ -223,26 +124,10 @@ def binary_label_conversion(
     logging.debug("Converting class labels to numeric values...")
 
     df_copy = df.copy()
-
-    df_copy[properties.label] = (
-        df_copy[properties.label].astype("str") == properties.benign_label
-    )
+    df_copy[properties.label] = (df_copy[properties.label].astype(str) == properties.benign_label).astype(int)
 
     return df_copy
 
-def binary_label_conversion_row(
-    row: pd.Series,
-    properties: DatasetProperties,
-) -> pd.Series:
-    logging.debug("Converting class label to numeric value for a single row...")
-
-    row_copy = row.copy()
-
-    row_copy[properties.label] = (
-        str(row_copy[properties.label]) == properties.benign_label
-    )
-
-    return row_copy
 
 def multi_class_label_conversion(
     df: pd.DataFrame,
@@ -252,25 +137,9 @@ def multi_class_label_conversion(
     logging.debug("Converting class labels to numeric values...")
 
     df_copy = df.copy()
-    df_copy[properties.label] = (
-        df_copy[properties.label].map(mapping).fillna(-1).astype(int)
-    )
+    df_copy[properties.label] = df_copy[properties.label].map(mapping).fillna(-1).astype(int)
 
     return df_copy
-
-
-def multi_class_label_conversion_row(
-    row: pd.Series,
-    properties: DatasetProperties,
-    mapping: Dict[Any, int],
-) -> pd.Series:
-    logging.debug("Converting class label to numeric value for a single row...")
-
-    row_copy = row.copy()
-
-    row_copy[properties.label] = mapping.get(row_copy[properties.label], -1)
-
-    return row_copy
 
 
 def split_data_for_torch(
@@ -279,22 +148,7 @@ def split_data_for_torch(
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     logging.debug("Extracting features and labels for Torch...")
 
-    features_df = df[properties.features]
-    labels_df = df[properties.label]
-
-    return features_df, labels_df
-
-
-def split_data_for_torch_row(
-    row: pd.Series,
-    properties: DatasetProperties,
-) -> Tuple[pd.Series, pd.Series]:
-    logging.debug("Extracting features and labels for Torch for a single row...")
-
-    features = row[properties.features]
-    labels = row[properties.label]
-
-    return features, labels
+    return df[properties.features], df[properties.label]
 
 
 def log_transformation(

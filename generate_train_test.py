@@ -9,7 +9,7 @@ import os
 import pandas as pd
 import logging
 
-def generate_train_test(train_fraction=0.8, dataset_name="NF-ToN-IoT-V2", df_path="datasets/NF-ToN-IoT-V2/NF-ToN-IoT-v2.csv", output_dir="datasets/NF-ToN-IoT-v2"):
+def generate_train_test(train_fraction=0.8, dataset_name="NF-UNSW-NB15-V2", df_path="datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2.csv", output_dir="datasets/NF-UNSW-NB15-V2"):
     df = pd.read_csv(df_path)
     
     train_size = int(len(df) * train_fraction)

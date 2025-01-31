@@ -28,7 +28,7 @@ def self_supervised_pretraining(epoch, epoch_steps):
 
     DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
     TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
-    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
+    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Test.csv"
 
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000
@@ -186,7 +186,7 @@ def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
 
     DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
     TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
-    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Balanced-Test.csv"
+    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Test.csv"
 
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000
@@ -208,7 +208,7 @@ def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
     prop = named_prop.get_properties(DATASET_NAME)
 
     df_train = pd.read_csv(TRAIN_PATH)
-    df_test = pd.read_csv(TEST_PATH, nrows=50000)
+    df_test = pd.read_csv(TEST_PATH)
 
     trans_builder = transformation_builder.TransformationBuilder()
 
@@ -379,12 +379,11 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    # self_supervised_pretraining(25, 30)
-    finetuning(1, 300)
+    self_supervised_pretraining(5, 200)
+    # finetuning(1, 300)
 
-    # self_supervised_pretraining(1, 450)
-    # for i in range(1, 6, 1):
-    #     finetuning(1, 10*i)
+    for i in range(1, 11, 1):
+        finetuning(1, 50*i, "logs/hybrid.csv")
 
     # for i in range(1, 15):
     #     self_supervised_pretraining(i, 30)
