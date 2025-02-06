@@ -25,23 +25,47 @@ def binary_classification(epoch, epoch_steps, metric_path = "logs/binary_metrics
     # DATASET_NAME = "nf_ton_iot_v2_anonymous"
     # TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
     # TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
-    
-    DATASET_NAME = "nf_unsw_nb15_v2_anonymous"    
+
+    DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
     TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
     TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Test.csv"
+
+    # DATASET_NAME = "cse_cic_ids_2018_v2"
+    # TRAIN_PATH = "datasets/NF-CSE-CIC-IDS2018-V2/NF-CSE-CIC-IDS2018-V2-Train.csv"
+    # TEST_PATH = "datasets/NF-CSE-CIC-IDS2018-V2/NF-CSE-CIC-IDS2018-V2-Test.csv"
 
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000
 
-    BATCH_SIZE = 32
-    WINDOW_SIZE = 10
-    EMBED_DIM = 128
-    NUM_HEADS = 4
-    NUM_LAYERS = 4
-    DROPOUT = 0.2
-    FF_DIM = 256
-    LR = 0.0003
-    WEIGHT_DECAY = 0.0005
+    # BATCH_SIZE = 32
+    # WINDOW_SIZE = 20
+    # EMBED_DIM = 512
+    # NUM_HEADS = 16
+    # NUM_LAYERS = 8
+    # DROPOUT = 0.4
+    # FF_DIM = 1024
+    # LR = 0.0001
+    # WEIGHT_DECAY = 0.0003
+
+    BATCH_SIZE = 64
+    WINDOW_SIZE = 15
+    EMBED_DIM = 256
+    NUM_HEADS = 8
+    NUM_LAYERS = 6
+    DROPOUT = 0.3
+    FF_DIM = 512
+    LR = 0.0002
+    WEIGHT_DECAY = 0.0004
+
+    # BATCH_SIZE = 128
+    # WINDOW_SIZE = 40
+    # EMBED_DIM = 512
+    # NUM_HEADS = 16
+    # NUM_LAYERS = 8
+    # DROPOUT = 0.4
+    # FF_DIM = 1024
+    # LR = 0.0001
+    # WEIGHT_DECAY = 0.0003
 
     N_EPOCH = epoch
     EPOCH_STEPS = epoch_steps #1000
