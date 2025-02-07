@@ -1,5 +1,6 @@
 import logging
 import pickle
+import configparser
 
 import pandas as pd
 from rich.logging import RichHandler
@@ -20,44 +21,30 @@ from nids_framework.training import trainer, metrics
 
 
 def self_supervised_pretraining(epoch, epoch_steps):
-    CONFIG_PATH = "configs/dataset_properties.ini"
+    PROPERTIES_PATH = "configs/dataset_properties.ini"
 
     # DATASET_NAME = "nf_ton_iot_v2_anonymous"
     DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
     # DATASET_NAME = "cse_cic_ids_2018_v2"
 
-    CATEGORICAL_LEVEL = 32
-    BOUND = 100000000
+    CONFIG_PATH = "configs/config.ini"
+    CONFIG_NAME = "small"
+    config = configparser.ConfigParser()
+    config.read(CONFIG_PATH)
+    config = config[CONFIG_NAME]
 
-    # BATCH_SIZE = 32
-    # WINDOW_SIZE = 10
-    # EMBED_DIM = 128
-    # NUM_HEADS = 4
-    # NUM_LAYERS = 4
-    # DROPOUT = 0.2
-    # FF_DIM = 256
-    # LR = 0.0003
-    # WEIGHT_DECAY = 0.0005
+    CATEGORICAL_LEVELS = int(config['categorical_levels'])
+    BOUND = int(config['bound'])
 
-    BATCH_SIZE = 64
-    WINDOW_SIZE = 15
-    EMBED_DIM = 256
-    NUM_HEADS = 8
-    NUM_LAYERS = 6
-    DROPOUT = 0.3
-    FF_DIM = 512
-    LR = 0.0002
-    WEIGHT_DECAY = 0.0004
-
-    # BATCH_SIZE = 128
-    # WINDOW_SIZE = 40
-    # EMBED_DIM = 512
-    # NUM_HEADS = 16
-    # NUM_LAYERS = 8
-    # DROPOUT = 0.4
-    # FF_DIM = 1024
-    # LR = 0.0001
-    # WEIGHT_DECAY = 0.0003
+    BATCH_SIZE = int(config['batch_size'])
+    WINDOW_SIZE = int(config['window_size'])
+    EMBED_DIM = int(config['embed_dim'])
+    NUM_HEADS = int(config['num_heads'])
+    NUM_LAYERS = int(config['num_layers'])
+    DROPOUT = float(config['dropout'])
+    FF_DIM = int(config['ff_dim'])
+    LR = float(config['lr'])
+    WEIGHT_DECAY = float(config['weight_decay'])
 
     N_EPOCH = epoch
     EPOCH_STEPS = epoch_steps
@@ -65,7 +52,7 @@ def self_supervised_pretraining(epoch, epoch_steps):
     # PATIENCE = 2
     # DELTA = 0.01
 
-    named_prop = properties.NamedDatasetProperties(CONFIG_PATH)
+    named_prop = properties.NamedDatasetProperties(PROPERTIES_PATH)
     prop = named_prop.get_properties(DATASET_NAME)
 
     df_train = pd.read_csv(prop.train_path)
@@ -74,7 +61,7 @@ def self_supervised_pretraining(epoch, epoch_steps):
     trans_builder = transformation_builder.TransformationBuilder()
 
     min_values, max_values = utilities.min_max_values(df_train, prop, BOUND)
-    unique_values = utilities.unique_values(df_train, prop, CATEGORICAL_LEVEL)
+    unique_values = utilities.unique_values(df_train, prop, CATEGORICAL_LEVELS)
 
     @trans_builder.add_step(order=1)
     def base_pre_processing(dataset):
@@ -86,7 +73,7 @@ def self_supervised_pretraining(epoch, epoch_steps):
 
     @trans_builder.add_step(order=3)
     def categorical_conversion(dataset):
-        return utilities.categorical_pre_processing(dataset, prop, unique_values, CATEGORICAL_LEVEL)
+        return utilities.categorical_pre_processing(dataset, prop, unique_values, CATEGORICAL_LEVELS)
     
     @trans_builder.add_step(order=5)
     def split_data_for_torch(dataset):
@@ -122,7 +109,7 @@ def self_supervised_pretraining(epoch, epoch_steps):
     )
 
     @trans_builder.add_step(order=1)
-    def categorical_one_hot(sample, categorical_levels=CATEGORICAL_LEVEL):
+    def categorical_one_hot(sample, categorical_levels=CATEGORICAL_LEVELS):
         return utilities.one_hot_encoding(sample, categorical_levels)
 
     transformations = trans_builder.build()
@@ -194,49 +181,35 @@ def self_supervised_pretraining(epoch, epoch_steps):
 
 
 def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
-    CONFIG_PATH = "configs/dataset_properties.ini"
+    PROPERTIES_PATH = "configs/dataset_properties.ini"
 
     # DATASET_NAME = "nf_ton_iot_v2_anonymous"
     DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
     # DATASET_NAME = "cse_cic_ids_2018_v2"
 
-    CATEGORICAL_LEVEL = 32
-    BOUND = 100000000
+    CONFIG_PATH = "configs/config.ini"
+    CONFIG_NAME = "small"
+    config = configparser.ConfigParser()
+    config.read(CONFIG_PATH)
+    config = config[CONFIG_NAME]
 
-    # BATCH_SIZE = 32
-    # WINDOW_SIZE = 10
-    # EMBED_DIM = 128
-    # NUM_HEADS = 4
-    # NUM_LAYERS = 4
-    # DROPOUT = 0.2
-    # FF_DIM = 256
-    # LR = 0.0003
-    # WEIGHT_DECAY = 0.0005
+    CATEGORICAL_LEVELS = int(config['categorical_levels'])
+    BOUND = int(config['bound'])
 
-    BATCH_SIZE = 32
-    WINDOW_SIZE = 15
-    EMBED_DIM = 256
-    NUM_HEADS = 8
-    NUM_LAYERS = 6
-    DROPOUT = 0.3
-    FF_DIM = 512
-    LR = 0.0002
-    WEIGHT_DECAY = 0.0004
-
-    # BATCH_SIZE = 128
-    # WINDOW_SIZE = 40
-    # EMBED_DIM = 512
-    # NUM_HEADS = 16
-    # NUM_LAYERS = 8
-    # DROPOUT = 0.4
-    # FF_DIM = 1024
-    # LR = 0.0001
-    # WEIGHT_DECAY = 0.0003
+    BATCH_SIZE = int(config['batch_size'])
+    WINDOW_SIZE = int(config['window_size'])
+    EMBED_DIM = int(config['embed_dim'])
+    NUM_HEADS = int(config['num_heads'])
+    NUM_LAYERS = int(config['num_layers'])
+    DROPOUT = float(config['dropout'])
+    FF_DIM = int(config['ff_dim'])
+    LR = float(config['lr'])
+    WEIGHT_DECAY = float(config['weight_decay'])
 
     N_EPOCH = epoch
     EPOCH_STEPS = epoch_steps
 
-    named_prop = properties.NamedDatasetProperties(CONFIG_PATH)
+    named_prop = properties.NamedDatasetProperties(PROPERTIES_PATH)
     prop = named_prop.get_properties(DATASET_NAME)
 
     df_train = pd.read_csv(prop.train_path)
@@ -245,7 +218,7 @@ def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
     trans_builder = transformation_builder.TransformationBuilder()
 
     min_values, max_values = utilities.min_max_values(df_train, prop, BOUND)
-    unique_values = utilities.unique_values(df_train, prop, CATEGORICAL_LEVEL)
+    unique_values = utilities.unique_values(df_train, prop, CATEGORICAL_LEVELS)
 
     # with open("datasets/NF-UNSW-NB15-V2/train_meta.pkl", "wb") as f:
     #     pickle.dump((min_values, max_values, unique_values), f)
@@ -260,7 +233,7 @@ def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
 
     @trans_builder.add_step(order=3)
     def categorical_conversion(dataset):
-        return utilities.categorical_pre_processing(dataset, prop, unique_values, CATEGORICAL_LEVEL)
+        return utilities.categorical_pre_processing(dataset, prop, unique_values, CATEGORICAL_LEVELS)
 
     @trans_builder.add_step(order=4)
     def binary_label_conversion(dataset):
@@ -303,7 +276,7 @@ def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
     )
 
     @trans_builder.add_step(order=1)
-    def categorical_one_hot(sample, categorical_levels=CATEGORICAL_LEVEL):
+    def categorical_one_hot(sample, categorical_levels=CATEGORICAL_LEVELS):
         return utilities.one_hot_encoding(sample, categorical_levels)
     
     transformations = trans_builder.build()
@@ -411,12 +384,12 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    # self_supervised_pretraining(1, 3000)
-    # finetuning(1, 500)
+    self_supervised_pretraining(1, 300)
+    finetuning(1, 500)
 
     # for i in range(1, 21, 1):
     #     finetuning(1, 50*i, "logs/hybrid.csv")
 
-    for i in range(1, 11):
-        self_supervised_pretraining(1, 10*i)
-        finetuning(1, 300, "logs/pretraining_300b.csv")
+    # for i in range(1, 11):
+    #     self_supervised_pretraining(1, 10*i)
+    #     finetuning(1, 300, "logs/pretraining_300b.csv")
