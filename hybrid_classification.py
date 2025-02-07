@@ -38,14 +38,14 @@ def self_supervised_pretraining(epoch, epoch_steps):
     BOUND = 100000000
 
     # BATCH_SIZE = 32
-    # WINDOW_SIZE = 20
-    # EMBED_DIM = 512
-    # NUM_HEADS = 16
-    # NUM_LAYERS = 8
-    # DROPOUT = 0.4
-    # FF_DIM = 1024
-    # LR = 0.0001
-    # WEIGHT_DECAY = 0.0003
+    # WINDOW_SIZE = 10
+    # EMBED_DIM = 128
+    # NUM_HEADS = 4
+    # NUM_LAYERS = 4
+    # DROPOUT = 0.2
+    # FF_DIM = 256
+    # LR = 0.0003
+    # WEIGHT_DECAY = 0.0005
 
     BATCH_SIZE = 64
     WINDOW_SIZE = 15
@@ -220,16 +220,16 @@ def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
     BOUND = 100000000
 
     # BATCH_SIZE = 32
-    # WINDOW_SIZE = 20
-    # EMBED_DIM = 512
-    # NUM_HEADS = 16
-    # NUM_LAYERS = 8
-    # DROPOUT = 0.4
-    # FF_DIM = 1024
-    # LR = 0.0001
-    # WEIGHT_DECAY = 0.0003
+    # WINDOW_SIZE = 10
+    # EMBED_DIM = 128
+    # NUM_HEADS = 4
+    # NUM_LAYERS = 4
+    # DROPOUT = 0.2
+    # FF_DIM = 256
+    # LR = 0.0003
+    # WEIGHT_DECAY = 0.0005
 
-    BATCH_SIZE = 64
+    BATCH_SIZE = 32
     WINDOW_SIZE = 15
     EMBED_DIM = 256
     NUM_HEADS = 8
@@ -413,7 +413,7 @@ def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
         train_data_loader=train_dataloader,
         epoch_steps=EPOCH_STEPS,
     )
-    #model.save_model_weights(f"saves/UNSW/tuned.pt")
+    model.save_model_weights(f"saves/hybrid/{EPOCH_STEPS}.pt")
 
     metric = metrics.BinaryClassificationMetric()
     train.test(test_dataloader, metric)
@@ -427,12 +427,12 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    self_supervised_pretraining(1, 3000)
-    # finetuning(1, 300)
+    # self_supervised_pretraining(1, 3000)
+    # finetuning(1, 500)
 
-    # for i in range(1, 11, 1):
+    # for i in range(1, 21, 1):
     #     finetuning(1, 50*i, "logs/hybrid.csv")
 
-    # for i in range(1, 15):
-    #     self_supervised_pretraining(i, 30)
-    #     finetuning(1, 200)
+    for i in range(1, 11):
+        self_supervised_pretraining(1, 10*i)
+        finetuning(1, 300, "logs/pretraining_300b.csv")
