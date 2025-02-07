@@ -5,6 +5,8 @@ from typing import List, Optional
 class DatasetProperties:
 
     __slots__ = [
+        "train_path",
+        "test_path",
         "features",
         "categorical_features",
         "numeric_features",
@@ -14,11 +16,15 @@ class DatasetProperties:
 
     def __init__(
         self,
+        train_path: str,
+        test_path: str,
         features: List[str],
         categorical_features: List[str],
         label: Optional[str] = None,
         benign_label: Optional[str] = None,
     ) -> None:
+        self.train_path = train_path
+        self.test_path = test_path
         self.features = features
         self.categorical_features = categorical_features
         self.numeric_features: List[str] = [
@@ -51,6 +57,8 @@ class NamedDatasetProperties:
             logging.info(f"Reading '{name}' from '{self.config_path}'.")
             spec = self._config[name]
             return DatasetProperties(
+                train_path=spec.get("train_path"),
+                test_path=spec.get("test_path"),
                 features=spec["features"].split(self.SEPARATOR),
                 categorical_features=spec["categorical_features"].split(self.SEPARATOR),
                 label=spec.get("label"),

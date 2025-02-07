@@ -23,16 +23,8 @@ def binary_classification(epoch, epoch_steps, metric_path = "logs/binary_metrics
     CONFIG_PATH = "configs/dataset_properties.ini"
 
     # DATASET_NAME = "nf_ton_iot_v2_anonymous"
-    # TRAIN_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Train.csv"
-    # TEST_PATH = "datasets/NF-ToN-IoT-V2/NF-ToN-IoT-V2-Test.csv"
-
     DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
-    TRAIN_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv"
-    TEST_PATH = "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Test.csv"
-
     # DATASET_NAME = "cse_cic_ids_2018_v2"
-    # TRAIN_PATH = "datasets/NF-CSE-CIC-IDS2018-V2/NF-CSE-CIC-IDS2018-V2-Train.csv"
-    # TEST_PATH = "datasets/NF-CSE-CIC-IDS2018-V2/NF-CSE-CIC-IDS2018-V2-Test.csv"
 
     CATEGORICAL_LEVEL = 32
     BOUND = 100000000
@@ -76,8 +68,8 @@ def binary_classification(epoch, epoch_steps, metric_path = "logs/binary_metrics
     named_prop = properties.NamedDatasetProperties(CONFIG_PATH)
     prop = named_prop.get_properties(DATASET_NAME)
 
-    df_train = pd.read_csv(TRAIN_PATH)
-    df_test = pd.read_csv(TEST_PATH)
+    df_train = pd.read_csv(prop.train_path)
+    df_test = pd.read_csv(prop.test_path)
 
     trans_builder = transformation_builder.TransformationBuilder()
 
