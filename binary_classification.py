@@ -202,8 +202,8 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    # binary_classification(1, 200)
+    binary_classification(1, 200)
 
-    for i in range(1, 21, 1):
-        binary_classification(1, 50*i, "logs/baseline.csv")
+    # for i in range(1, 21, 1):
+    #     binary_classification(1, 50*i, "logs/baseline.csv")
 

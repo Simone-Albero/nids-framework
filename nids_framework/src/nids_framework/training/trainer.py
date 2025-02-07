@@ -128,6 +128,12 @@ class Trainer:
             epoch_loss += self._train_one_batch(next(data_iter))
             
         return epoch_loss / total_steps
+    
+    def _l1_regularization(self, model, lambda_l1=0.01):
+        l1_norm = 0
+        for param in model.parameters():
+            l1_norm += torch.sum(torch.abs(param))
+        return lambda_l1 * l1_norm
 
     def _train_one_batch(self, batch: Tuple[torch.Tensor, torch.Tensor]) -> float:
 
@@ -139,12 +145,15 @@ class Trainer:
         self.optimizer.zero_grad()
         outputs = self.model(inputs)
 
+        l1_loss = self._l1_regularization(self.model)
+
         if labels is not None:
             loss = self.criterion(outputs, labels)
         else:
             loss = self.criterion(outputs)
 
-        loss.backward()
+        total_loss = loss + l1_loss
+        total_loss.backward()
         self.optimizer.step()
 
         return loss.item()
