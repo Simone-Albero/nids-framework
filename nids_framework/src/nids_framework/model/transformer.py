@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-    
+
 class BaseModule(nn.Module):
     def __init__(self):
         super(BaseModule, self).__init__()
@@ -188,6 +188,8 @@ class TransformerAutoencoder(BaseModule):
         "embedding",
         "encoder",
         "decoder",
+        "numeric_head",
+        "categorical_head",
         "noise_factor",
     ]
         
@@ -200,7 +202,9 @@ class TransformerAutoencoder(BaseModule):
         ff_dim: int = 64,
         dropout: float = 0.1,
         seq_length: int = 10,
-        noise_factor: float = 0.1
+        noise_factor: float = 0.1,
+        numeric_dim: int = None,
+        categorical_dim: int = None,
     ):
         super(TransformerAutoencoder, self).__init__()
 
@@ -223,12 +227,19 @@ class TransformerAutoencoder(BaseModule):
             dropout=dropout,
         )
 
+        self.numeric_head = nn.Linear(model_dim, numeric_dim) if numeric_dim else None
+        self.categorical_head = nn.Linear(model_dim, categorical_dim) if categorical_dim else None
+
         self.noise_factor = noise_factor
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
         x = self.embedding(x)
         x_noisy = x + self.noise_factor * torch.randn_like(x)
 
         encoded = self.encoder(x_noisy)
         decoded = self.decoder(encoded, x)
-        return decoded[:, -1, :], x[:, -1, :]
+
+        decoded_numeric = self.numeric_head(decoded) if self.numeric_head else None
+        decoded_categorical = self.categorical_head(decoded) if self.categorical_head else None
+
+        return decoded_numeric, decoded_categorical

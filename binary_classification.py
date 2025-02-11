@@ -205,6 +205,6 @@ if __name__ == "__main__":
 
     # binary_classification(1, 200)
 
-    for i in range(1, 21, 1):
-        binary_classification(1, 50*i, "logs/baseline.csv")
+    for i in range(1, 15, 1):
+        binary_classification(1, 25*i, "logs/baseline.csv")
 

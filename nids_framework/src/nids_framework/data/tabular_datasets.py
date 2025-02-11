@@ -76,7 +76,7 @@ class TabularDataset(Dataset):
             return features, target[..., -1]
         
         else:
-            return features
+            return features, numeric, self._categorical_data[idx]
 
     def set_numeric_transformation(self, transformations: List[Callable]) -> None:
         self._numeric_transformation = Compose(transformations)

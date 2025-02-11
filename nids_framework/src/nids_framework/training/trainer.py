@@ -129,31 +129,24 @@ class Trainer:
             
         return epoch_loss / total_steps
     
-    def _l1_regularization(self, model, lambda_l1=0.01):
-        l1_norm = 0
-        for param in model.parameters():
-            l1_norm += torch.sum(torch.abs(param))
-        return lambda_l1 * l1_norm
 
-    def _train_one_batch(self, batch: Tuple[torch.Tensor, torch.Tensor]) -> float:
+    def _train_one_batch(self, batch: Tuple) -> float:
 
         if len(batch) == 2:
             inputs, labels = batch
         else:
-            inputs, labels = batch, None
+            inputs, num_target, cat_target = batch
 
         self.optimizer.zero_grad()
         outputs = self.model(inputs)
 
-        l1_loss = self._l1_regularization(self.model)
-
-        if labels is not None:
+        if len(batch) == 2:
             loss = self.criterion(outputs, labels)
         else:
-            loss = self.criterion(outputs)
-
-        total_loss = loss # + l1_loss
-        total_loss.backward()
+            num_recon, cat_recon = outputs
+            loss = self.criterion(num_recon, num_target, cat_recon, cat_target)
+            
+        loss.backward()
         self.optimizer.step()
 
         return loss.item()
@@ -168,14 +161,15 @@ class Trainer:
                 if len(batch) == 2:
                     inputs, labels = batch
                 else:
-                    inputs, labels = batch[0], None
+                    inputs, num_target, cat_target = batch
 
                 outputs = self.model(inputs)
 
-                if labels is not None:
+                if len(batch) == 2:
                     loss = self.criterion(outputs, labels)
                 else:
-                    loss = self.criterion(outputs)
+                    num_recon, cat_recon = outputs
+                    loss = self.criterion(num_recon, num_target, cat_recon, cat_target)
 
                 validation_loss += loss.item()
 
@@ -195,18 +189,19 @@ class Trainer:
                 if len(batch) == 2:
                     inputs, labels = batch
                 else:
-                    inputs, labels = batch[0], None
+                    inputs, num_target, cat_target = batch
 
                 outputs = self.model(inputs)
 
-                if labels is not None:
+                if len(batch) == 2:
                     loss = self.criterion(outputs, labels)
-                    test_loss += loss.item()
-                    if metric is not None:
-                        metric.step(outputs, labels)
                 else:
-                    loss = self.criterion(outputs)
-                    test_loss += loss.item()
+                    num_recon, cat_recon = outputs
+                    loss = self.criterion(num_recon, num_target, cat_recon, cat_target)
+                
+                test_loss += loss.item()
+                if metric is not None:
+                    metric.step(outputs, labels)
 
         test_loss /= len(data_loader)
         logging.info("Done with testing.")

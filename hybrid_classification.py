@@ -157,12 +157,14 @@ def self_supervised_pretraining(epoch, epoch_steps):
         ff_dim=FF_DIM,
         dropout=DROPOUT,
         seq_length=WINDOW_SIZE,
+        numeric_dim=len(prop.numeric_features),
+        categorical_dim=input_dim-len(prop.numeric_features)
     ).to(device)
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logging.info(f"Total number of parameters: {total_params}")
 
-    criterion = loss.CosineSimilarityLoss()
+    criterion = loss.HybridReconstructionLoss()
     optimizer = optim.Adam(
         model.parameters(),
         lr=LR,
@@ -213,7 +215,7 @@ def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
     prop = named_prop.get_properties(DATASET_NAME)
 
     df_train = pd.read_csv(prop.train_path)
-    df_test = pd.read_csv(prop.test_path)
+    df_test = pd.read_csv(prop.test_path, nrows=100000)
 
     trans_builder = transformation_builder.TransformationBuilder()
 
@@ -328,10 +330,8 @@ def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
     pre_trained_embedding = transformer.InputEmbedding(input_dim, LATENT_DIM, DROPOUT).to(device)
     pre_trained_embedding.load_model_weights(f"saves/{DATASET_NAME}/pre_trained_embedding.pt")
 
-    # for i, layer in enumerate(pre_trained_encoder.encoder.layers):
-    #     if i <= 1: 
-    #         for param in layer.parameters():
-    #             param.requires_grad = False
+    # for param in pre_trained_encoder.parameters():
+    #     param.requires_grad = False
 
     # for param in pre_trained_embedding.parameters():
     #     param.requires_grad = False
@@ -384,11 +384,11 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    self_supervised_pretraining(1, 2000)
-    #vfinetuning(1, 200)
+    self_supervised_pretraining(1, 6000)
+    # finetuning(1, 50)
 
-    for i in range(1, 21, 1):
-        finetuning(1, 50*i, "logs/hybrid.csv")
+    for i in range(1, 15, 1):
+        finetuning(1, 25*i, "logs/hybrid.csv")
 
     # for i in range(1, 11):
     #     self_supervised_pretraining(1, 10*i)
