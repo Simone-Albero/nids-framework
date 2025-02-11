@@ -152,7 +152,7 @@ class Trainer:
         else:
             loss = self.criterion(outputs)
 
-        total_loss = loss + l1_loss
+        total_loss = loss # + l1_loss
         total_loss.backward()
         self.optimizer.step()
 

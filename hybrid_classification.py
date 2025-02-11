@@ -38,7 +38,7 @@ def self_supervised_pretraining(epoch, epoch_steps):
 
     BATCH_SIZE = int(config['batch_size'])
     WINDOW_SIZE = int(config['window_size'])
-    EMBED_DIM = int(config['embed_dim'])
+    LATENT_DIM = int(config['latent_dim'])
     NUM_HEADS = int(config['num_heads'])
     NUM_LAYERS = int(config['num_layers'])
     DROPOUT = float(config['dropout'])
@@ -151,12 +151,12 @@ def self_supervised_pretraining(epoch, epoch_steps):
 
     model = transformer.TransformerAutoencoder(
         input_dim=input_dim,
-        embed_dim=EMBED_DIM,
+        model_dim=LATENT_DIM,
         num_heads=NUM_HEADS,
         num_layers=NUM_LAYERS,
         ff_dim=FF_DIM,
         dropout=DROPOUT,
-        window_size=WINDOW_SIZE,
+        seq_length=WINDOW_SIZE,
     ).to(device)
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -198,7 +198,7 @@ def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
 
     BATCH_SIZE = int(config['batch_size'])
     WINDOW_SIZE = int(config['window_size'])
-    EMBED_DIM = int(config['embed_dim'])
+    LATENT_DIM = int(config['latent_dim'])
     NUM_HEADS = int(config['num_heads'])
     NUM_LAYERS = int(config['num_layers'])
     DROPOUT = float(config['dropout'])
@@ -316,16 +316,16 @@ def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
     logging.info(f"Input dim: {input_dim}")
 
     pre_trained_encoder = transformer.TransformerEncoder(
-        embed_dim=EMBED_DIM,
+        model_dim=LATENT_DIM,
         num_heads=NUM_HEADS,
         num_layers=NUM_LAYERS,
         ff_dim=FF_DIM,
         dropout=DROPOUT,
-        window_size=WINDOW_SIZE,
+        seq_length=WINDOW_SIZE,
     ).to(device)
     pre_trained_encoder.load_model_weights(f"saves/{DATASET_NAME}/pre_trained_encoder.pt")
 
-    pre_trained_embedding = transformer.InputEmbedding(input_dim, EMBED_DIM, DROPOUT).to(device)
+    pre_trained_embedding = transformer.InputEmbedding(input_dim, LATENT_DIM, DROPOUT).to(device)
     pre_trained_embedding.load_model_weights(f"saves/{DATASET_NAME}/pre_trained_embedding.pt")
 
     # for i, layer in enumerate(pre_trained_encoder.encoder.layers):
@@ -339,12 +339,12 @@ def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
     model = transformer.TransformerClassifier(
         num_classes=1,
         input_dim=input_dim,
-        embed_dim=EMBED_DIM,
+        model_dim=LATENT_DIM,
         num_heads=NUM_HEADS,
         num_layers=NUM_LAYERS,
         ff_dim=FF_DIM,
         dropout=DROPOUT,
-        window_size=WINDOW_SIZE,
+        seq_length=WINDOW_SIZE,
     ).to(device)
     model.encoder = pre_trained_encoder
     model.embedding = pre_trained_embedding
@@ -384,11 +384,11 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    self_supervised_pretraining(1, 300)
-    finetuning(1, 500)
+    self_supervised_pretraining(1, 2000)
+    #vfinetuning(1, 200)
 
-    # for i in range(1, 21, 1):
-    #     finetuning(1, 50*i, "logs/hybrid.csv")
+    for i in range(1, 21, 1):
+        finetuning(1, 50*i, "logs/hybrid.csv")
 
     # for i in range(1, 11):
     #     self_supervised_pretraining(1, 10*i)

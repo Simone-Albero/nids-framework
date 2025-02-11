@@ -38,7 +38,7 @@ def binary_classification(epoch, epoch_steps, metric_path = "logs/binary_metrics
 
     BATCH_SIZE = int(config['batch_size'])
     WINDOW_SIZE = int(config['window_size'])
-    EMBED_DIM = int(config['embed_dim'])
+    LATENT_DIM = int(config['latent_dim'])
     NUM_HEADS = int(config['num_heads'])
     NUM_LAYERS = int(config['num_layers'])
     DROPOUT = float(config['dropout'])
@@ -160,11 +160,12 @@ def binary_classification(epoch, epoch_steps, metric_path = "logs/binary_metrics
     model = transformer.TransformerClassifier(
         num_classes=1,
         input_dim=input_dim,
-        embed_dim=EMBED_DIM,
+        model_dim=LATENT_DIM,
         num_heads=NUM_HEADS,
         num_layers=NUM_LAYERS,
         ff_dim=FF_DIM,
         dropout=DROPOUT,
+        seq_length=WINDOW_SIZE
     ).to(device)
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -202,8 +203,8 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    binary_classification(1, 200)
+    # binary_classification(1, 200)
 
-    # for i in range(1, 21, 1):
-    #     binary_classification(1, 50*i, "logs/baseline.csv")
+    for i in range(1, 21, 1):
+        binary_classification(1, 50*i, "logs/baseline.csv")
 
