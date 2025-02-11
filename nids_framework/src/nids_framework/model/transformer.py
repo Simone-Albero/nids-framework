@@ -227,10 +227,8 @@ class TransformerAutoencoder(BaseModule):
 
     def forward(self, x: Tensor) -> Tensor:
         x = self.embedding(x)
-
-        x_noisy = x.clone()
         x_noisy = x + self.noise_factor * torch.randn_like(x)
 
         encoded = self.encoder(x_noisy)
-        decoded = self.decoder(encoded, encoded)
+        decoded = self.decoder(encoded, x)
         return decoded[:, -1, :], x[:, -1, :]
