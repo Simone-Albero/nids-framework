@@ -9,7 +9,7 @@ import os
 import pandas as pd
 import logging
 
-def generate_train_test(train_fraction=0.8, dataset_name="NF-UNSW-NB15-V2"):
+def generate_train_test(train_fraction=0.8, dataset_name="NF-CSE-CIC-IDS2018-V2"):
     df_path = f"datasets/{dataset_name}/{dataset_name}.csv"
     output_dir = f"datasets/{dataset_name}"
     df = pd.read_csv(df_path)

@@ -25,7 +25,7 @@ def binary_classification(epoch, epoch_steps, metric_path = "logs/binary_metrics
 
     # DATASET_NAME = "nf_ton_iot_v2_anonymous"
     DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
-    # DATASET_NAME = "cse_cic_ids_2018_v2"
+    # DATASET_NAME = "cse_cic_ids_2018_v2_anonymous"
 
     CONFIG_PATH = "configs/config.ini"
     CONFIG_NAME = "small"

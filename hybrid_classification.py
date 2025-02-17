@@ -24,8 +24,8 @@ def self_supervised_pretraining(epoch, epoch_steps):
     PROPERTIES_PATH = "configs/dataset_properties.ini"
 
     # DATASET_NAME = "nf_ton_iot_v2_anonymous"
-    DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
-    # DATASET_NAME = "cse_cic_ids_2018_v2"
+    # DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
+    DATASET_NAME = "cse_cic_ids_2018_v2_anonymous"
 
     CONFIG_PATH = "configs/config.ini"
     CONFIG_NAME = "small"
@@ -164,7 +164,7 @@ def self_supervised_pretraining(epoch, epoch_steps):
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logging.info(f"Total number of parameters: {total_params}")
 
-    criterion = loss.HybridReconstructionLoss()
+    criterion = loss.HybridReconstructionLoss(0.2,0.8)
     optimizer = optim.Adam(
         model.parameters(),
         lr=LR,
@@ -186,8 +186,8 @@ def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
     PROPERTIES_PATH = "configs/dataset_properties.ini"
 
     # DATASET_NAME = "nf_ton_iot_v2_anonymous"
-    DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
-    # DATASET_NAME = "cse_cic_ids_2018_v2"
+    # DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
+    DATASET_NAME = "cse_cic_ids_2018_v2"
 
     CONFIG_PATH = "configs/config.ini"
     CONFIG_NAME = "small"
@@ -384,11 +384,11 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    self_supervised_pretraining(1, 6000)
-    # finetuning(1, 50)
+    self_supervised_pretraining(1, 800)
+    finetuning(1, 10)
 
-    for i in range(1, 15, 1):
-        finetuning(1, 25*i, "logs/hybrid.csv")
+    # for i in range(1, 15, 1):
+    #     finetuning(1, 25*i, "logs/hybrid.csv")
 
     # for i in range(1, 11):
     #     self_supervised_pretraining(1, 10*i)
