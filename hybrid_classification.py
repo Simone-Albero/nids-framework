@@ -385,11 +385,12 @@ if __name__ == "__main__":
     )
 
     
-    for seed in [42, 29, 13, 3, 15]:
-        self_supervised_pretraining(1, 800, seed)
-        for i in range(1, 15, 1):
-            supervised_finetuning(1, 25*i, f"logs/{seed}_hybrid.csv", True, seed)
+    # for seed in [42, 29, 13, 3, 15]:
+    #     self_supervised_pretraining(1, 800, seed)
+    #     for i in range(1, 15, 1):
+    #         supervised_finetuning(1, 25*i, f"logs/{seed}_hybrid.csv", True, seed)
 
-    # for i in range(1, 11):
-    #     self_supervised_pretraining(1, 10*i)
-    #     finetuning(1, 300, "logs/pretraining_300b.csv")
+    for seed in [42, 29, 13, 3, 15]:
+        for i in range(1, 25):
+            self_supervised_pretraining(1, 100*i, seed)
+            supervised_finetuning(1, 300, f"logs/{seed}_pretraining_300b.csv", seed)
