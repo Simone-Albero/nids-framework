@@ -20,7 +20,7 @@ from nids_framework.model import transformer, loss
 from nids_framework.training import trainer, metrics
 
 
-def self_supervised_pretraining(epoch, epoch_steps):
+def self_supervised_pretraining(epoch, epoch_steps, seed = 42):
     PROPERTIES_PATH = "configs/dataset_properties.ini"
 
     # DATASET_NAME = "nf_ton_iot_v2_anonymous"
@@ -92,7 +92,7 @@ def self_supervised_pretraining(epoch, epoch_steps):
         device = "mps"
 
     # Set seed for reproducibility
-    torch.manual_seed(13)
+    torch.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
@@ -117,10 +117,10 @@ def self_supervised_pretraining(epoch, epoch_steps):
     test_dataset.set_categorical_transformation(transformations)
 
     train_sampler = samplers.RandomSlidingWindowSampler(
-        train_dataset, window_size=WINDOW_SIZE
+        train_dataset, window_size=WINDOW_SIZE, seed = seed
     )
     test_sampler = samplers.RandomSlidingWindowSampler(
-        test_dataset, window_size=WINDOW_SIZE
+        test_dataset, window_size=WINDOW_SIZE, seed = seed
     )
 
     train_dataloader = DataLoader(
@@ -174,7 +174,7 @@ def self_supervised_pretraining(epoch, epoch_steps):
     #train.test(test_dataloader)
 
 
-def supervised_finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv", isBinary = True):
+def supervised_finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv", isBinary = True, seed = 42):
     PROPERTIES_PATH = "configs/dataset_properties.ini"
 
     # DATASET_NAME = "nf_ton_iot_v2_anonymous"
@@ -257,7 +257,7 @@ def supervised_finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics
         device = "mps"
 
     # Set seed for reproducibility
-    torch.manual_seed(13)
+    torch.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
@@ -284,10 +284,10 @@ def supervised_finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics
     test_dataset.set_categorical_transformation(transformations)
 
     train_sampler = samplers.RandomSlidingWindowSampler(
-        train_dataset, window_size=WINDOW_SIZE
+        train_dataset, window_size=WINDOW_SIZE, seed = seed
     )
     test_sampler = samplers.RandomSlidingWindowSampler(
-        test_dataset, window_size=WINDOW_SIZE
+        test_dataset, window_size=WINDOW_SIZE, seed = seed
     )
 
     train_dataloader = DataLoader(
@@ -327,7 +327,7 @@ def supervised_finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics
     # for param in pre_trained_embedding.parameters():
     #     param.requires_grad = False
 
-    model = transformer.TransformerClassifier(
+    model = transformer.TransformerClassifier(\
         output_dim=1 if class_mapping is None else len(class_mapping),
         input_dim=input_dim,
         model_dim=LATENT_DIM,
@@ -384,11 +384,11 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    self_supervised_pretraining(1, 800)
-    supervised_finetuning(1, 200, "logs/hybrid.csv", False)
-
-    # for i in range(1, 15, 1):
-    #     finetuning(1, 25*i, "logs/hybrid.csv")
+    
+    for seed in [42, 29, 13, 3, 15]:
+        self_supervised_pretraining(1, 800, seed)
+        for i in range(1, 15, 1):
+            supervised_finetuning(1, 25*i, f"logs/{seed}_hybrid.csv", True, seed)
 
     # for i in range(1, 11):
     #     self_supervised_pretraining(1, 10*i)

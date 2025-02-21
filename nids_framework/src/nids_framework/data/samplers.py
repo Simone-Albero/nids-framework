@@ -9,11 +9,11 @@ from torch.utils.data import Sampler, Dataset
 class RandomSlidingWindowSampler(Sampler[List[int]]):
     __slots__ = ["window_size", "_dataset", "_indices"]
 
-    def __init__(self, dataset: Dataset, window_size: int) -> None:
+    def __init__(self, dataset: Dataset, window_size: int, seed: int = 42) -> None:
         self.window_size = window_size
         self._dataset = dataset
         self._indices: List[int] = list(range(len(dataset) - window_size + 1))
-        random.seed(13)
+        random.seed(seed)
 
     def __iter__(self) -> Iterator[List[int]]:
         return (
@@ -29,11 +29,11 @@ class GroupWindowSampler(Sampler[List[int]]):
     __slots__ = ["window_size", "_dataset", "_indices"]
 
     def __init__(
-        self, dataset, window_size: int, df: pd.DataFrame, group_column: str
+        self, dataset, window_size: int, df: pd.DataFrame, group_column: str, seed: int = 42
     ) -> None:
         self._dataset = dataset
         self.window_size = window_size
-        random.seed(42)
+        random.seed(seed)
 
         self._indices = list(
             itertools.chain.from_iterable(

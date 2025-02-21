@@ -34,5 +34,4 @@ else
   exit 1
 fi
 
-#deactivate
-
+deactivate

@@ -20,7 +20,7 @@ from nids_framework.model import transformer
 from nids_framework.training import trainer, metrics
 
 
-def supervised_classification(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv", isBinary = True):
+def supervised_classification(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv", isBinary = True, seed = 42):
     PROPERTIES_PATH = "configs/dataset_properties.ini"
 
     # DATASET_NAME = "nf_ton_iot_v2_anonymous"
@@ -106,7 +106,7 @@ def supervised_classification(epoch, epoch_steps, metric_path = "logs/binary_met
         device = "mps"
 
     # Set seed for reproducibility
-    torch.manual_seed(13)
+    torch.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
@@ -130,10 +130,10 @@ def supervised_classification(epoch, epoch_steps, metric_path = "logs/binary_met
     test_dataset.set_categorical_transformation(transformations)
 
     train_sampler = samplers.RandomSlidingWindowSampler(
-        train_dataset, window_size=WINDOW_SIZE
+        train_dataset, window_size=WINDOW_SIZE, seed = seed
     )
     test_sampler = samplers.RandomSlidingWindowSampler(
-        test_dataset, window_size=WINDOW_SIZE
+        test_dataset, window_size=WINDOW_SIZE, seed = seed
     )
 
     train_dataloader = DataLoader(
@@ -210,8 +210,9 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    supervised_classification(1, 200, "logs/baseline.csv", False)
+    # supervised_classification(1, 200, "logs/baseline.csv", True, 42)
 
-    # for i in range(1, 15, 1):
-    #     supervised_classification(1, 25*i, "logs/baseline.csv", True)
+    for seed in [42, 29, 13, 3, 15]:
+        for i in range(1, 15, 1):
+            supervised_classification(1, 25*i, f"logs/{seed}_baseline.csv", True, seed)
 
