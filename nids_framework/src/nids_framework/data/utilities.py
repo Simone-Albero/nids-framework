@@ -190,15 +190,3 @@ def one_hot_encoding(tensor: torch.Tensor, levels: int) -> torch.Tensor:
         return one_hot.flatten()
     elif len(one_hot.shape) > 2:
         return one_hot.view(one_hot.size(0), -1)
-    
-
-def mask_features(
-    tensor: torch.Tensor, mask_prob: float = 0.1, mask_value: Any = 0.0
-) -> torch.Tensor:
-
-    last_row = tensor[-1, :]
-    mask = torch.rand(last_row.shape, device=tensor.device) < mask_prob
-    
-    tensor[-1, :] = torch.where(mask, torch.tensor(mask_value, device=tensor.device, dtype=tensor.dtype), last_row)
-    
-    return tensor

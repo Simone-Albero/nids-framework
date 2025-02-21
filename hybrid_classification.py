@@ -116,14 +116,6 @@ def self_supervised_pretraining(epoch, epoch_steps):
     train_dataset.set_categorical_transformation(transformations)
     test_dataset.set_categorical_transformation(transformations)
 
-    # @trans_builder.add_step(order=1)
-    # def mask_features(sample):
-    #     return utilities.mask_features(sample, 0.4)
-
-    # transformations = trans_builder.build()
-    # train_dataset.set_masking_transformation(transformations)
-    # test_dataset.set_masking_transformation(transformations)
-
     train_sampler = samplers.RandomSlidingWindowSampler(
         train_dataset, window_size=WINDOW_SIZE
     )
@@ -392,7 +384,7 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    #self_supervised_pretraining(1, 800)
+    self_supervised_pretraining(1, 800)
     supervised_finetuning(1, 200, "logs/hybrid.csv", False)
 
     # for i in range(1, 15, 1):

@@ -13,7 +13,6 @@ class TabularDataset(Dataset):
         "_target",
         "_numeric_transformation",
         "_categorical_transformation",
-        "_masking_transformation",
         "_target_transformation",
     ]
 
@@ -49,7 +48,6 @@ class TabularDataset(Dataset):
 
         self._numeric_transformation: Optional[Compose] = None
         self._categorical_transformation: Optional[Compose] = None
-        self._masking_transformation: Optional[Compose] = None
         self._target_transformation: Optional[Compose] = None
 
     def __len__(self) -> int:
@@ -65,9 +63,6 @@ class TabularDataset(Dataset):
             categorical = self._categorical_transformation(categorical)
 
         features = torch.cat((numeric, categorical), dim=-1)
-
-        if self._masking_transformation:
-            features = self._masking_transformation(features)
 
         if self._target is not None:
             target = self._target[idx]
@@ -86,7 +81,3 @@ class TabularDataset(Dataset):
 
     def set_target_transformation(self, transformations: List[Callable]) -> None:
         self._target_transformation = Compose(transformations)
-
-    def set_masking_transformation(self, transformations: List[Callable]) -> None:
-        self._masking_transformation = Compose(transformations)
-

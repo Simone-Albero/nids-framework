@@ -106,15 +106,24 @@ class BinaryClassificationMetric(Metric):
 
     def _write_header(self, file_path: str) -> None:
         with open(file_path, "w") as f:
-            headers = ["Precision", "Recall", "F1", "Balanced Accuracy", "TN", "FN", "FP", "TP"]
+            headers = [
+                "Precision",
+                "Recall",
+                "F1",
+                "Balanced Accuracy",
+                "TN",
+                "FN",
+                "FP",
+                "TP",
+            ]
             f.write(",".join(headers) + "\n")
 
     def _write_metrics(self, file_handle) -> None:
         file_handle.write(
-        f"{self.precision:.3f},{self.recall:.3f},{self.f1:.3f},{self.balanced_accuracy:.3f},"
-        f"{self._confusion_matrix[0, 0]},{self._confusion_matrix[0, 1]},"
-        f"{self._confusion_matrix[1, 0]},{self._confusion_matrix[1, 1]}\n"
-    )
+            f"{self.precision:.3f},{self.recall:.3f},{self.f1:.3f},{self.balanced_accuracy:.3f},"
+            f"{self._confusion_matrix[0, 0]},{self._confusion_matrix[0, 1]},"
+            f"{self._confusion_matrix[1, 0]},{self._confusion_matrix[1, 1]}\n"
+        )
 
 
 class MulticlassClassificationMetric(Metric):
