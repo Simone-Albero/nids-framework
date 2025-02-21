@@ -20,15 +20,15 @@ from nids_framework.model import transformer
 from nids_framework.training import trainer, metrics
 
 
-def binary_classification(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
+def supervised_classification(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv", isBinary = True):
     PROPERTIES_PATH = "configs/dataset_properties.ini"
 
     # DATASET_NAME = "nf_ton_iot_v2_anonymous"
     DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
     # DATASET_NAME = "cse_cic_ids_2018_v2_anonymous"
-
     CONFIG_PATH = "configs/config.ini"
     CONFIG_NAME = "small"
+
     config = configparser.ConfigParser()
     config.read(CONFIG_PATH)
     config = config[CONFIG_NAME]
@@ -47,10 +47,7 @@ def binary_classification(epoch, epoch_steps, metric_path = "logs/binary_metrics
     WEIGHT_DECAY = float(config['weight_decay'])
 
     N_EPOCH = epoch
-    EPOCH_STEPS = epoch_steps #1000
-    # EPOCH_UNTIL_VALIDATION = 100
-    # PATIENCE = 2
-    # DELTA = 0.01
+    EPOCH_STEPS = epoch_steps
 
     named_prop = properties.NamedDatasetProperties(PROPERTIES_PATH)
     prop = named_prop.get_properties(DATASET_NAME)
@@ -63,8 +60,11 @@ def binary_classification(epoch, epoch_steps, metric_path = "logs/binary_metrics
     min_values, max_values = utilities.min_max_values(df_train, prop, BOUND)
     unique_values = utilities.unique_values(df_train, prop, CATEGORICAL_LEVELS)
 
-    # with open("datasets/NF-UNSW-NB15-V2/train_meta.pkl", "wb") as f:
-    #     pickle.dump((min_values, max_values, unique_values), f)
+    class_mapping = None
+    if not isBinary:
+        class_mapping, _ = utilities.labels_mapping(df_train, prop)
+        logging.info(f"Class Mapping:\n {class_mapping}\n")
+
 
     @trans_builder.add_step(order=1)
     def base_pre_processing(dataset):
@@ -79,11 +79,15 @@ def binary_classification(epoch, epoch_steps, metric_path = "logs/binary_metrics
         return utilities.categorical_pre_processing(
             dataset, prop, unique_values, CATEGORICAL_LEVELS
         )
-
-    @trans_builder.add_step(order=4)
-    def binary_label_conversion(dataset):
-        return utilities.binary_benign_label_conversion(dataset, prop)
-        #return utilities.binary_label_conversion(dataset, prop)
+    
+    if isBinary:
+        @trans_builder.add_step(order=4)
+        def binary_label_conversion(dataset):
+            return utilities.binary_benign_label_conversion(dataset, prop)
+    else:
+        @trans_builder.add_step(order=4)
+        def binary_label_conversion(dataset):
+            return utilities.multi_class_label_conversion(dataset, prop, class_mapping)
 
     @trans_builder.add_step(order=5)
     def split_data_for_torch(dataset):
@@ -132,13 +136,6 @@ def binary_classification(epoch, epoch_steps, metric_path = "logs/binary_metrics
         test_dataset, window_size=WINDOW_SIZE
     )
 
-    # train_sampler = samplers.GroupWindowSampler(
-    #     train_dataset, WINDOW_SIZE, df_train, "IPV4_DST_ADDR"
-    # )
-    # test_sampler = samplers.GroupWindowSampler(
-    #     test_dataset, WINDOW_SIZE, df_test, "IPV4_DST_ADDR"
-    # )
-
     train_dataloader = DataLoader(
         train_dataset,
         batch_size=BATCH_SIZE,
@@ -158,7 +155,7 @@ def binary_classification(epoch, epoch_steps, metric_path = "logs/binary_metrics
     logging.info(f"Input dim: {input_dim}")
 
     model = transformer.TransformerClassifier(
-        num_classes=1,
+        output_dim=1 if class_mapping is None else len(class_mapping),
         input_dim=input_dim,
         model_dim=LATENT_DIM,
         num_heads=NUM_HEADS,
@@ -172,10 +169,16 @@ def binary_classification(epoch, epoch_steps, metric_path = "logs/binary_metrics
     logging.info(f"Total number of parameters: {total_params}")
 
     class_proportions = y_train.value_counts(normalize=True).sort_index()
-    pos_weight = torch.tensor(class_proportions.iloc[0] / class_proportions.iloc[1], dtype=torch.float32, device=device)
-    logging.info(f"pos_weight: {pos_weight}")
+    if isBinary:
+        pos_weight = torch.tensor(class_proportions.iloc[0] / class_proportions.iloc[1], dtype=torch.float32, device=device)
+        logging.info(f"pos_weight: {pos_weight}")
+        criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    else:
+        class_weights = torch.tensor(1.0 / class_proportions.values, dtype=torch.float32, device=device)
+        logging.info(f"class_weights: {class_weights}")
+        criterion = nn.CrossEntropyLoss(weight=class_weights)
 
-    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+
     optimizer = optim.Adam(
         model.parameters(),
         lr=LR,
@@ -189,9 +192,13 @@ def binary_classification(epoch, epoch_steps, metric_path = "logs/binary_metrics
         train_data_loader=train_dataloader,
         epoch_steps=EPOCH_STEPS,
     )
-    model.save_model_weights(f"saves/baseline/{EPOCH_STEPS}.pt")
+    model.save_model_weights(f"saves/baseline/{DATASET_NAME}/{EPOCH_STEPS}.pt")
 
-    metric = metrics.BinaryClassificationMetric()
+    if isBinary:
+        metric = metrics.BinaryClassificationMetric()
+    else:
+        metric = metrics.MulticlassClassificationMetric(len(class_mapping))
+
     train.test(test_dataloader, metric)
     metric.save(metric_path)
 
@@ -203,8 +210,8 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    # binary_classification(1, 200)
+    supervised_classification(1, 200, "logs/baseline.csv", False)
 
-    for i in range(1, 15, 1):
-        binary_classification(1, 25*i, "logs/baseline.csv")
+    # for i in range(1, 15, 1):
+    #     supervised_classification(1, 25*i, "logs/baseline.csv", True)
 

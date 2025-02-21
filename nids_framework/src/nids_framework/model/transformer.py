@@ -51,26 +51,21 @@ class ClassificationHead(BaseModule):
     __slots__ = [
         "classifier",
         "dropout",
-        "num_classes",
+        "output_dim",
     ]
 
-    def __init__(self, latent_dim: int, num_classes: int, dropout: float = 0.1) -> None:
+    def __init__(self, latent_dim: int, output_dim: int, dropout: float = 0.1) -> None:
         super(ClassificationHead, self).__init__()
-        self.classifier: nn.Module = nn.Linear(latent_dim, num_classes)
+        self.classifier: nn.Module = nn.Linear(latent_dim, output_dim)
         self.dropout: nn.Module = nn.Dropout(dropout)
-        self.num_classes = num_classes
+        self.output_dim = output_dim
 
     def forward(self, x: Tensor) -> Tensor:
         x = x[:, -1, :]  # last token classification
         x = self.dropout(x)
         x = self.classifier(x)
 
-        x = x.squeeze(-1) if self.num_classes == 1 else x
-        # x = torch.sigmoid(x).squeeze(-1)
-        
-        # else:
-        #     x = F.softmax(x, dim=-1)
-
+        x = x.squeeze(-1) if self.output_dim == 1 else x
         return x
     
 
@@ -149,7 +144,6 @@ class TransformerDecoder(BaseModule):
 class TransformerClassifier(BaseModule):
 
     __slots__ = [
-        "num_classes",
         "embedding",
         "encoder",
         "classifier",
@@ -157,7 +151,7 @@ class TransformerClassifier(BaseModule):
 
     def __init__(
         self,
-        num_classes: int,
+        output_dim: int,
         input_dim: int,
         model_dim: int = 128,
         num_heads: int = 2,
@@ -167,13 +161,12 @@ class TransformerClassifier(BaseModule):
         seq_length: int = 10,
     ) -> None:
         super(TransformerClassifier, self).__init__()
-        self.num_classes = num_classes
         self.embedding = InputEmbedding(input_dim, model_dim, dropout)
         self.encoder = TransformerEncoder(
             model_dim, num_heads, num_layers, ff_dim, dropout, seq_length
         )
 
-        self.classifier = ClassificationHead(model_dim, num_classes, dropout)
+        self.classifier = ClassificationHead(model_dim, output_dim, dropout)
 
     def forward(self, x: Tensor) -> Tensor:
         x = self.embedding(x)

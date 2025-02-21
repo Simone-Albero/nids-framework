@@ -24,11 +24,11 @@ def self_supervised_pretraining(epoch, epoch_steps):
     PROPERTIES_PATH = "configs/dataset_properties.ini"
 
     # DATASET_NAME = "nf_ton_iot_v2_anonymous"
-    # DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
-    DATASET_NAME = "cse_cic_ids_2018_v2_anonymous"
-
+    DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
+    # DATASET_NAME = "cse_cic_ids_2018_v2_anonymous"
     CONFIG_PATH = "configs/config.ini"
     CONFIG_NAME = "small"
+
     config = configparser.ConfigParser()
     config.read(CONFIG_PATH)
     config = config[CONFIG_NAME]
@@ -164,7 +164,7 @@ def self_supervised_pretraining(epoch, epoch_steps):
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logging.info(f"Total number of parameters: {total_params}")
 
-    criterion = loss.HybridReconstructionLoss(0.2,0.8)
+    criterion = loss.HybridReconstructionLoss()
     optimizer = optim.Adam(
         model.parameters(),
         lr=LR,
@@ -182,15 +182,15 @@ def self_supervised_pretraining(epoch, epoch_steps):
     #train.test(test_dataloader)
 
 
-def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
+def supervised_finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv", isBinary = True):
     PROPERTIES_PATH = "configs/dataset_properties.ini"
 
     # DATASET_NAME = "nf_ton_iot_v2_anonymous"
-    # DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
-    DATASET_NAME = "cse_cic_ids_2018_v2"
-
+    DATASET_NAME = "nf_unsw_nb15_v2_anonymous"
+    # DATASET_NAME = "cse_cic_ids_2018_v2"
     CONFIG_PATH = "configs/config.ini"
     CONFIG_NAME = "small"
+
     config = configparser.ConfigParser()
     config.read(CONFIG_PATH)
     config = config[CONFIG_NAME]
@@ -215,15 +215,17 @@ def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
     prop = named_prop.get_properties(DATASET_NAME)
 
     df_train = pd.read_csv(prop.train_path)
-    df_test = pd.read_csv(prop.test_path, nrows=100000)
+    df_test = pd.read_csv(prop.test_path)
 
     trans_builder = transformation_builder.TransformationBuilder()
 
     min_values, max_values = utilities.min_max_values(df_train, prop, BOUND)
     unique_values = utilities.unique_values(df_train, prop, CATEGORICAL_LEVELS)
 
-    # with open("datasets/NF-UNSW-NB15-V2/train_meta.pkl", "wb") as f:
-    #     pickle.dump((min_values, max_values, unique_values), f)
+    class_mapping = None
+    if not isBinary:
+        class_mapping, _ = utilities.labels_mapping(df_train, prop)
+        logging.info(f"Class Mapping:\n {class_mapping}\n")
 
     @trans_builder.add_step(order=1)
     def base_pre_processing(dataset):
@@ -237,10 +239,14 @@ def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
     def categorical_conversion(dataset):
         return utilities.categorical_pre_processing(dataset, prop, unique_values, CATEGORICAL_LEVELS)
 
-    @trans_builder.add_step(order=4)
-    def binary_label_conversion(dataset):
-        return utilities.binary_benign_label_conversion(dataset, prop)
-        #return utilities.binary_label_conversion(dataset, prop)
+    if isBinary:
+        @trans_builder.add_step(order=4)
+        def binary_label_conversion(dataset):
+            return utilities.binary_benign_label_conversion(dataset, prop)
+    else:
+        @trans_builder.add_step(order=4)
+        def binary_label_conversion(dataset):
+            return utilities.multi_class_label_conversion(dataset, prop, class_mapping)
     
     @trans_builder.add_step(order=5)
     def split_data_for_torch(dataset):
@@ -292,13 +298,6 @@ def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
         test_dataset, window_size=WINDOW_SIZE
     )
 
-    # train_sampler = samplers.GroupWindowSampler(
-    #     train_dataset, WINDOW_SIZE, df_train, "IPV4_SRC_ADDR"
-    # )
-    # test_sampler = samplers.GroupWindowSampler(
-    #     test_dataset, WINDOW_SIZE, df_test, "IPV4_SRC_ADDR"
-    # )
-
     train_dataloader = DataLoader(
         train_dataset,
         batch_size=BATCH_SIZE,
@@ -337,7 +336,7 @@ def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
     #     param.requires_grad = False
 
     model = transformer.TransformerClassifier(
-        num_classes=1,
+        output_dim=1 if class_mapping is None else len(class_mapping),
         input_dim=input_dim,
         model_dim=LATENT_DIM,
         num_heads=NUM_HEADS,
@@ -353,10 +352,15 @@ def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
     logging.info(f"Total number of parameters: {total_params}")
 
     class_proportions = y_train.value_counts(normalize=True).sort_index()
-    pos_weight = torch.tensor(class_proportions.iloc[0] / class_proportions.iloc[1], dtype=torch.float32, device=device)
-    logging.info(f"pos_weight: {pos_weight}")
+    if isBinary:
+        pos_weight = torch.tensor(class_proportions.iloc[0] / class_proportions.iloc[1], dtype=torch.float32, device=device)
+        logging.info(f"pos_weight: {pos_weight}")
+        criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    else:
+        class_weights = torch.tensor(1.0 / class_proportions.values, dtype=torch.float32, device=device)
+        logging.info(f"class_weights: {class_weights}")
+        criterion = nn.CrossEntropyLoss(weight=class_weights)
 
-    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     optimizer = optim.Adam(
         model.parameters(),
         lr=LR,
@@ -370,9 +374,13 @@ def finetuning(epoch, epoch_steps, metric_path = "logs/binary_metrics.csv"):
         train_data_loader=train_dataloader,
         epoch_steps=EPOCH_STEPS,
     )
-    model.save_model_weights(f"saves/hybrid/{EPOCH_STEPS}.pt")
+    model.save_model_weights(f"saves/hybrid/{DATASET_NAME}/{EPOCH_STEPS}.pt")
 
-    metric = metrics.BinaryClassificationMetric()
+    if isBinary:
+        metric = metrics.BinaryClassificationMetric()
+    else:
+        metric = metrics.MulticlassClassificationMetric(len(class_mapping))
+    
     train.test(test_dataloader, metric)
     metric.save(metric_path)
 
@@ -384,8 +392,8 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    self_supervised_pretraining(1, 800)
-    finetuning(1, 10)
+    #self_supervised_pretraining(1, 800)
+    supervised_finetuning(1, 200, "logs/hybrid.csv", False)
 
     # for i in range(1, 15, 1):
     #     finetuning(1, 25*i, "logs/hybrid.csv")
