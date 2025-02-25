@@ -275,7 +275,7 @@ def run_experiment(
         test_data_loader,
         criterion,
         metric,
-        metric_path=f"{metric_path}/{seed}.csv",
+        metric_path=metric_path,
         device=device,
     )
 
@@ -343,7 +343,7 @@ def run_baseline(
         test_data_loader,
         criterion,
         metric,
-        metric_path=f"{metric_path}/{seed}.csv",
+        metric_path=metric_path,
         device=device,
     )
 
@@ -375,9 +375,12 @@ if __name__ == "__main__":
                 finetuning_steps=25,
                 pretraining_steps=100 * i,
                 config_tag=config_tag,
-                metric_path=f"logs/{dataset_name}/pretrain_25b",
+                metric_path=f"logs/{dataset_name}/pretrain_25b/{seed}.csv",
                 seed=seed,
             )
+
+        stats = pd.read_csv(f"logs/{dataset_name}/pretrain_25b/{seed}.csv")
+        max_id = stats["F1"].idxmax() + 1
 
         for i in range(1, 31, 1):
             run_experiment(
@@ -387,9 +390,9 @@ if __name__ == "__main__":
                 x_test,
                 y_test,
                 finetuning_steps=10 * i,
-                pretraining_steps=1800,
+                pretraining_steps=100 * max_id,
                 config_tag=config_tag,
-                metric_path=f"logs/{dataset_name}/hybrid_10b",
+                metric_path=f"logs/{dataset_name}/hybrid_10b/{seed}.csv",
                 seed=seed,
             )
             run_baseline(
@@ -400,6 +403,6 @@ if __name__ == "__main__":
                 y_test,
                 finetuning_steps=10 * i,
                 config_tag=config_tag,
-                metric_path=f"logs/{dataset_name}/baseline_10b",
+                metric_path=f"logs/{dataset_name}/baseline_10b/{seed}.csv",
                 seed=seed,
             )

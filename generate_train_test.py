@@ -35,4 +35,6 @@ if __name__ == "__main__":
         handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_path=False)],
     )
 
-    generate_train_test()
+    generate_train_test(dataset_name="NF-UNSW-NB15-V2")
+    generate_train_test(dataset_name="NF-ToN-IoT-V2")
+    generate_train_test(dataset_name="NF-CSE-CIC-IDS2018-V2")
