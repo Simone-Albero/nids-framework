@@ -31,7 +31,14 @@ class GroupWindowSampler(Sampler[List[int]]):
 
     __slots__ = ["window_size", "_dataset", "_indices"]
 
-    def __init__(self, dataset: Dataset, window_size: int, df: pd.DataFrame, group_column: str, seed: int = 42) -> None:
+    def __init__(
+        self,
+        dataset: Dataset,
+        window_size: int,
+        df: pd.DataFrame,
+        group_column: str,
+        seed: int = 42,
+    ) -> None:
         super().__init__()
         self._dataset = dataset
         self.window_size = window_size

@@ -21,14 +21,21 @@ class TabularDataset(Dataset):
             raise ValueError("classification_type must be 'binary' or 'multiclass'")
 
         self._data: Dict[str, torch.Tensor] = {
-            "numeric": torch.as_tensor(numeric_data.to_numpy(), dtype=torch.float32, device=device),
-            "categorical": torch.as_tensor(categorical_data.to_numpy(), dtype=torch.long, device=device),
+            "numeric": torch.as_tensor(
+                numeric_data.to_numpy(), dtype=torch.float32, device=device
+            ),
+            "categorical": torch.as_tensor(
+                categorical_data.to_numpy(), dtype=torch.long, device=device
+            ),
         }
 
         self._target: Optional[torch.Tensor] = None
         if target is not None:
             target_tensor = torch.as_tensor(target.to_numpy())
-            self._target = target_tensor.squeeze().to(dtype=torch.float32 if classification_type == "binary" else torch.long, device=device)
+            self._target = target_tensor.squeeze().to(
+                dtype=torch.float32 if classification_type == "binary" else torch.long,
+                device=device,
+            )
 
         self._transforms: Dict[str, Optional[Compose]] = {
             "numeric": None,

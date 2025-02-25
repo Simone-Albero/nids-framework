@@ -2,6 +2,7 @@ import torch
 
 from .base import Metric
 
+
 class BinaryClassificationMetric(Metric):
     __slots__ = [
         "precision",
@@ -47,7 +48,9 @@ class BinaryClassificationMetric(Metric):
             f"Class 1 - Precision: {self.precision:.4f}, Recall: {self.recall:.4f}, F1 Score: {self.f1:.4f}, Balanced Accuracy: {self.balanced_accuracy:.4f}\n"
         )
 
-    def save(self, file_path: str = "logs/binary_metrics.csv", reset_logs: bool = False) -> None:
+    def save(
+        self, file_path: str = "logs/binary_metrics.csv", reset_logs: bool = False
+    ) -> None:
         super().save(file_path, reset_logs)
 
     def _write_header(self, file_path: str) -> None:

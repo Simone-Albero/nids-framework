@@ -16,7 +16,7 @@ class EarlyStopping:
         "_patience",
         "_delta",
         "_counter",
-        "best_model_wts"
+        "best_model_wts",
     ]
 
     def __init__(self, patience: int = 7, delta: float = 0.0):
@@ -46,8 +46,15 @@ class EarlyStopping:
             self.best_model_wts = model.state_dict()
             self._counter = 0
 
-    def _save_checkpoint(self, val_loss: float, model: nn.Module, f_path: str = "checkpoints/checkpoint.pt") -> None:
-        logging.info(f"Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}). Saving model ...")
+    def _save_checkpoint(
+        self,
+        val_loss: float,
+        model: nn.Module,
+        f_path: str = "checkpoints/checkpoint.pt",
+    ) -> None:
+        logging.info(
+            f"Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}). Saving model ..."
+        )
         os.makedirs(os.path.dirname(f_path), exist_ok=True)
         torch.save(model.state_dict(), f_path)
         self.val_loss_min = val_loss

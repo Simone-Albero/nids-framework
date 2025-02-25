@@ -1,11 +1,11 @@
 from typing import Optional
-import logging
 
 from sklearn.base import BaseEstimator, TransformerMixin
 import pandas as pd
 import numpy as np
 
 from ..properties import DatasetProperties
+
 
 class Clipper(BaseEstimator, TransformerMixin):
     __slots__ = ["properties", "border"]

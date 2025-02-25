@@ -30,9 +30,7 @@ class ClassificationHead(BaseModule):
         intermediate_dim = latent_dim // 2
 
         self.fc_sequence = nn.Sequential(
-            nn.Linear(latent_dim, intermediate_dim),
-            nn.ReLU(),
-            nn.Dropout(dropout)
+            nn.Linear(latent_dim, intermediate_dim), nn.ReLU(), nn.Dropout(dropout)
         )
         self.classifier = nn.Linear(intermediate_dim, output_dim)
         self.output_dim = output_dim
@@ -44,18 +42,25 @@ class ClassificationHead(BaseModule):
         return x.squeeze(-1) if self.output_dim == 1 else x
 
 
-
 class TransformerClassifier(BaseModule):
 
     __slots__ = ["embedding", "encoder", "classifier"]
 
     def __init__(
-        self, output_dim: int, input_dim: int, model_dim: int = 128, num_heads: int = 2, num_layers: int = 4,
-        ff_dim: int = 64, dropout: float = 0.1
+        self,
+        output_dim: int,
+        input_dim: int,
+        model_dim: int = 128,
+        num_heads: int = 2,
+        num_layers: int = 4,
+        ff_dim: int = 64,
+        dropout: float = 0.1,
     ) -> None:
         super().__init__()
         self.embedding = InputEmbedding(input_dim, model_dim, dropout)
-        self.encoder = TransformerEncoder(model_dim, num_heads, num_layers, ff_dim, dropout)
+        self.encoder = TransformerEncoder(
+            model_dim, num_heads, num_layers, ff_dim, dropout
+        )
         self.classifier = ClassificationHead(model_dim, output_dim, dropout)
 
     def forward(self, x: Tensor) -> Tensor:

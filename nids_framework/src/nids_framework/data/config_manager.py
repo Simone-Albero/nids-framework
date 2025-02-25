@@ -10,7 +10,7 @@ class ConfigManager:
         if not os.path.exists(config_path):
             raise FileNotFoundError(f"Configuration file '{config_path}' not found.")
 
-        with open(config_path, 'r') as file:
+        with open(config_path, "r") as file:
             ConfigManager.config = json.load(file)
 
     @staticmethod

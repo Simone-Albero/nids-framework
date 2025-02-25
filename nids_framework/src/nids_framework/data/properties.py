@@ -3,6 +3,7 @@ from typing import List, Optional
 
 from .config_manager import ConfigManager
 
+
 class DatasetProperties:
 
     __slots__ = [
@@ -43,12 +44,14 @@ class DatasetProperties:
     def from_config(cls, config_path: str) -> "DatasetProperties":
         ConfigManager.load_config(config_path)
 
-        train_path = ConfigManager.get_value('dataset', 'train_path')
-        test_path = ConfigManager.get_value('dataset', 'test_path')
-        features = ConfigManager.get_value('dataset', 'features', [])
-        categorical_features = ConfigManager.get_value('dataset', 'categorical_features', [])
-        label = ConfigManager.get_value('dataset', 'label')
-        benign_label = ConfigManager.get_value('dataset', 'benign_label')
+        train_path = ConfigManager.get_value("dataset", "train_path")
+        test_path = ConfigManager.get_value("dataset", "test_path")
+        features = ConfigManager.get_value("dataset", "features", [])
+        categorical_features = ConfigManager.get_value(
+            "dataset", "categorical_features", []
+        )
+        label = ConfigManager.get_value("dataset", "label")
+        benign_label = ConfigManager.get_value("dataset", "benign_label")
 
         return cls(
             train_path=train_path,

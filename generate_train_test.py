@@ -4,13 +4,14 @@ import os
 from rich.logging import RichHandler
 import pandas as pd
 
+
 def generate_train_test(train_fraction=0.8, dataset_name="NF-UNSW-NB15-V2"):
     df_path = f"datasets/{dataset_name}/{dataset_name}.csv"
     output_dir = f"datasets/{dataset_name}"
     df = pd.read_csv(df_path)
-    
+
     train_size = int(len(df) * train_fraction)
-    
+
     df_train = df.head(train_size)
     df_test = df.tail(len(df) - train_size)
 
@@ -21,7 +22,7 @@ def generate_train_test(train_fraction=0.8, dataset_name="NF-UNSW-NB15-V2"):
 
     df_train.to_csv(train_path, index=False)
     logging.info(f"Training set saved to: {train_path}")
-    
+
     df_test.to_csv(test_path, index=False)
     logging.info(f"Testing set saved to: {test_path}")
 

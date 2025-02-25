@@ -1,5 +1,4 @@
 from typing import Optional, Dict, Any
-import logging
 
 from sklearn.base import BaseEstimator, TransformerMixin
 import pandas as pd

@@ -4,6 +4,7 @@ import torch
 
 from .base import Metric
 
+
 class MulticlassClassificationMetric(Metric):
     __slots__ = [
         "_class_stats",
@@ -74,7 +75,9 @@ class MulticlassClassificationMetric(Metric):
 
         return "".join(output)
 
-    def save(self, file_path: str = "logs/multiclass_metrics.csv", reset_logs: bool = False) -> None:
+    def save(
+        self, file_path: str = "logs/multiclass_metrics.csv", reset_logs: bool = False
+    ) -> None:
         super().save(file_path, reset_logs)
 
     def _write_header(self, file_path: str) -> None:

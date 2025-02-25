@@ -8,6 +8,7 @@ def label_mapping(target: pd.Series) -> Dict[Any, int]:
     mapping = {label: idx for idx, label in enumerate(target.unique())}
     return mapping
 
+
 def binary_label_mapping(target: pd.Series, target_label: Any) -> Dict[Any, int]:
     mapping = {label: 0 if label == target_label else 1 for label in target.unique()}
     return mapping

@@ -10,38 +10,54 @@ from .early_stopping import EarlyStopping
 
 class Trainer:
 
-    __slots__ = ["model",
-                 "criterion",
-                 "optimizer",
-                 "device",
-                 "early_stopping",]
+    __slots__ = [
+        "model",
+        "criterion",
+        "optimizer",
+        "device",
+        "early_stopping",
+    ]
 
-    def __init__(self, criterion: Optional[nn.Module] = None,
-                 optimizer: Optional[torch.optim.Optimizer] = None,
-                 patience: Optional[int] = None, delta: Optional[float] = None, device: Optional[str] = "cpu") -> None:
+    def __init__(
+        self,
+        criterion: Optional[nn.Module] = None,
+        optimizer: Optional[torch.optim.Optimizer] = None,
+        patience: Optional[int] = None,
+        delta: Optional[float] = None,
+        device: Optional[str] = "cpu",
+    ) -> None:
         self.model = None
         self.criterion = criterion
         self.optimizer = optimizer
         self.device = device
 
-        self.early_stopping : Optional[EarlyStopping] = None
+        self.early_stopping: Optional[EarlyStopping] = None
         if patience is not None and delta is not None:
             self.early_stopping = EarlyStopping(patience=patience, delta=delta)
 
     def set_model(self, model: nn.Module) -> None:
         self.model = model
 
-    def _step_one_batch(self, batch: Tuple, metric: Optional[Metric] = None) -> torch.Tensor:
+    def _step_one_batch(
+        self, batch: Tuple, metric: Optional[Metric] = None
+    ) -> torch.Tensor:
         if len(batch) == 2:
             inputs, labels = batch
-            inputs, labels = inputs.to(self.device, non_blocking=True), labels.to(self.device, non_blocking=True)
+            inputs, labels = inputs.to(self.device, non_blocking=True), labels.to(
+                self.device, non_blocking=True
+            )
         else:
             inputs, num_target, cat_target = batch
-            inputs, num_target, cat_target = inputs.to(self.device, non_blocking=True), num_target.to(self.device, non_blocking=True), cat_target.to(self.device, non_blocking=True)
+            inputs, num_target, cat_target = (
+                inputs.to(self.device, non_blocking=True),
+                num_target.to(self.device, non_blocking=True),
+                cat_target.to(self.device, non_blocking=True),
+            )
 
         outputs = self.model(inputs)
 
-        if metric and len(batch) == 2: metric.step(outputs, labels)
+        if metric and len(batch) == 2:
+            metric.step(outputs, labels)
 
         if len(batch) == 2:
             return self.criterion(outputs, labels)
@@ -49,10 +65,14 @@ class Trainer:
             num_recon, cat_recon = outputs
             return self.criterion(num_recon, num_target, cat_recon, cat_target)
 
-    def train_one_epoch(self, data_loader: DataLoader, epoch_steps: Optional[int] = None) -> float:
+    def train_one_epoch(
+        self, data_loader: DataLoader, epoch_steps: Optional[int] = None
+    ) -> float:
         self.model.train()
         epoch_loss = torch.tensor(0.0, device=self.device)
-        total_steps = min(epoch_steps, len(data_loader)) if epoch_steps else len(data_loader)
+        total_steps = (
+            min(epoch_steps, len(data_loader)) if epoch_steps else len(data_loader)
+        )
         data_iter = iter(data_loader)
 
         for _ in tqdm(range(total_steps), desc="Training"):
@@ -65,8 +85,14 @@ class Trainer:
 
         return epoch_loss.item() / total_steps
 
-    def train(self, n_epoch: int, data_loader: DataLoader, epoch_steps: Optional[int] = None,
-              epochs_until_validation: Optional[int] = 1, valid_data_loader: Optional[DataLoader] = None) -> float:
+    def train(
+        self,
+        n_epoch: int,
+        data_loader: DataLoader,
+        epoch_steps: Optional[int] = None,
+        epochs_until_validation: Optional[int] = 1,
+        valid_data_loader: Optional[DataLoader] = None,
+    ) -> float:
         if self.model is None:
             raise ValueError("Model is not set. Call `set_model()` to assign a model.")
 
@@ -78,18 +104,26 @@ class Trainer:
             total_train_loss += epoch_loss
             logging.info(f"Epoch {epoch + 1}/{n_epoch} Loss: {epoch_loss:.6f}")
 
-            if valid_data_loader and self.early_stopping and (epoch + 1) % epochs_until_validation == 0:
+            if (
+                valid_data_loader
+                and self.early_stopping
+                and (epoch + 1) % epochs_until_validation == 0
+            ):
                 validation_loss = self.validate(valid_data_loader)
                 self.early_stopping(validation_loss, self.model)
 
                 if self.early_stopping.early_stop:
                     logging.info(f"Early stopping at epoch {epoch + 1}")
-                    logging.info(f"Training completed early. Average Loss: {total_train_loss / (epoch + 1):.6f}")
+                    logging.info(
+                        f"Training completed early. Average Loss: {total_train_loss / (epoch + 1):.6f}"
+                    )
                     self.early_stopping.restore_best_weights(self.model)
                     break
 
         average_train_loss = total_train_loss / n_epoch
-        logging.info(f"Training completed: {n_epoch} epochs, Average Loss: {average_train_loss:.6f}")
+        logging.info(
+            f"Training completed: {n_epoch} epochs, Average Loss: {average_train_loss:.6f}"
+        )
         return average_train_loss
 
     def validate(self, data_loader: DataLoader) -> float:

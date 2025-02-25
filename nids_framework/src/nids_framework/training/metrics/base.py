@@ -3,6 +3,7 @@ import numpy as np
 from numpy.typing import NDArray
 import torch
 
+
 class Metric:
     __slots__ = ["_confusion_matrix", "_n_classes"]
 
@@ -28,7 +29,9 @@ class Metric:
         """String representation of metrics."""
         pass
 
-    def save(self, file_path: str = "logs/metrics.csv", reset_logs: bool = False) -> None:
+    def save(
+        self, file_path: str = "logs/metrics.csv", reset_logs: bool = False
+    ) -> None:
         if reset_logs or not os.path.exists(file_path):
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             self._write_header(file_path)

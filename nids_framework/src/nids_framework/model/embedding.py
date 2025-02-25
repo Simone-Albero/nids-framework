@@ -2,6 +2,7 @@ import torch.nn as nn
 from torch import Tensor
 from .base import BaseModule
 
+
 class InputEmbedding(BaseModule):
 
     __slots__ = ["embedding", "dropout"]
