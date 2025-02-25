@@ -1,13 +1,8 @@
-import pandas as pd
 import logging
 import os
 
 from rich.logging import RichHandler
-import tqdm
-
-import os
 import pandas as pd
-import logging
 
 def generate_train_test(train_fraction=0.8, dataset_name="NF-UNSW-NB15-V2"):
     df_path = f"datasets/{dataset_name}/{dataset_name}.csv"

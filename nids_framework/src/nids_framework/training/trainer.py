@@ -1,213 +1,124 @@
 import logging
-import os
 from typing import Optional, Tuple
-
-import numpy as np
-from tqdm import tqdm
 import torch
 from torch import nn
-from torch.nn.modules.loss import _Loss
-from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
-
-from .metrics import Metric
-from ..tools.utilities import trace_stats
-
-
-class EarlyStopping:
-
-    __slots__ = [
-        "best_score",
-        "early_stop",
-        "val_loss_min",
-        "_patience",
-        "_delta",
-        "_counter",
-    ]
-
-    def __init__(self, patience: int = 7, delta: float = 0):
-        self.best_score: Optional[float] = None
-        self.early_stop: bool = False
-        self.val_loss_min: float = np.inf
-        self._patience = patience
-        self._delta = delta
-        self._counter: int = 0
-
-    def __call__(self, val_loss: float, model: nn.Module) -> None:
-        score = -val_loss
-
-        if self.best_score is None:
-            self.best_score = score
-            self._save_checkpoint(val_loss, model)
-        elif score < self.best_score * (1 - self._delta):
-            self._counter += 1
-            logging.info(f"EarlyStopping counter: {self._counter}/{self._patience}")
-            if self._counter >= self._patience:
-                self.early_stop = True
-        else:
-            self.best_score = score
-            self._save_checkpoint(val_loss, model)
-            self._counter = 0
-
-    def _save_checkpoint(
-        self,
-        val_loss: float,
-        model: nn.Module,
-        f_path: str = "checkpoints/checkpoint.pt",
-    ) -> None:
-        logging.info(
-            f"Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}). Saving model ..."
-        )
-
-        os.makedirs(os.path.dirname(f_path), exist_ok=True)
-        torch.save(model.state_dict(), f_path)
-        self.val_loss_min = val_loss
+from tqdm import tqdm
+from .metrics.base import Metric
+from .early_stopping import EarlyStopping
 
 
 class Trainer:
 
-    __slots__ = [
-        "model",
-        "criterion",
-        "optimizer",
-    ]
+    __slots__ = ["model",
+                 "criterion",
+                 "optimizer",
+                 "device",
+                 "early_stopping",]
 
-    def __init__(
-        self,
-        model: nn.Module,
-        criterion: Optional[_Loss] = None,
-        optimizer: Optional[Optimizer] = None,
-    ) -> None:
-        self.model = model
+    def __init__(self, criterion: Optional[nn.Module] = None,
+                 optimizer: Optional[torch.optim.Optimizer] = None,
+                 patience: Optional[int] = None, delta: Optional[float] = None, device: Optional[str] = "cpu") -> None:
+        self.model = None
         self.criterion = criterion
         self.optimizer = optimizer
+        self.device = device
 
-    #@trace_stats()
-    def train(
-        self,
-        n_epoch: int,
-        train_data_loader: DataLoader,
-        epoch_steps: Optional[int] = None,
-        epochs_until_validation: Optional[int] = None,
-        valid_data_loader: Optional[DataLoader] = None,
-        patience: Optional[int] = None,
-        delta: Optional[float] = None,
-    ) -> float:
-        logging.info(f"Starting {n_epoch}-epoch training loop...")
+        self.early_stopping : Optional[EarlyStopping] = None
+        if patience is not None and delta is not None:
+            self.early_stopping = EarlyStopping(patience=patience, delta=delta)
 
-        early_stopping = EarlyStopping(patience, delta) if patience and delta else None
-        train_loss = 0.0
+    def set_model(self, model: nn.Module) -> None:
+        self.model = model
 
-        for epoch in range(n_epoch):
-            epoch_loss = self.train_one_epoch(train_data_loader, epoch_steps)
-            train_loss += epoch_loss
-            logging.info(f"Epoch {epoch+1}/{n_epoch} Loss: {epoch_loss:.6f}")
+    def _step_one_batch(self, batch: Tuple, metric: Optional[Metric] = None) -> torch.Tensor:
+        if len(batch) == 2:
+            inputs, labels = batch
+            inputs, labels = inputs.to(self.device, non_blocking=True), labels.to(self.device, non_blocking=True)
+        else:
+            inputs, num_target, cat_target = batch
+            inputs, num_target, cat_target = inputs.to(self.device, non_blocking=True), num_target.to(self.device, non_blocking=True), cat_target.to(self.device, non_blocking=True)
 
-            if valid_data_loader and epochs_until_validation and (epoch + 1) % epochs_until_validation == 0:
-                validation_loss = self.validate(valid_data_loader)
-                if early_stopping:
-                    early_stopping(validation_loss, self.model)
-                    if early_stopping.early_stop:
-                        logging.info(f"Early stopping at epoch {epoch+1}")
-                        self.model.load_state_dict(torch.load("checkpoints/checkpoint.pt"))
-                        break
+        outputs = self.model(inputs)
 
-        train_loss /= n_epoch
-        logging.info(f"Training completed: {n_epoch} epochs, Average Loss: {train_loss:.6f}")
-        return train_loss
-    
-    def train_one_epoch(
-        self, data_loader: DataLoader, epoch_steps: Optional[int] = None
-    ) -> float:
-        epoch_loss = 0.0
+        if metric and len(batch) == 2: metric.step(outputs, labels)
+
+        if len(batch) == 2:
+            return self.criterion(outputs, labels)
+        else:
+            num_recon, cat_recon = outputs
+            return self.criterion(num_recon, num_target, cat_recon, cat_target)
+
+    def train_one_epoch(self, data_loader: DataLoader, epoch_steps: Optional[int] = None) -> float:
+        self.model.train()
+        epoch_loss = torch.tensor(0.0, device=self.device)
         total_steps = min(epoch_steps, len(data_loader)) if epoch_steps else len(data_loader)
         data_iter = iter(data_loader)
 
-        self.model.train()
         for _ in tqdm(range(total_steps), desc="Training"):
-            epoch_loss += self._train_one_batch(next(data_iter))
-            
-        return epoch_loss / total_steps
-    
+            batch = next(data_iter)
+            self.optimizer.zero_grad()
+            loss = self._step_one_batch(batch)
+            loss.backward()
+            self.optimizer.step()
+            epoch_loss += loss.detach()
 
-    def _train_one_batch(self, batch: Tuple) -> float:
+        return epoch_loss.item() / total_steps
 
-        if len(batch) == 2:
-            inputs, labels = batch
-        else:
-            inputs, num_target, cat_target = batch
+    def train(self, n_epoch: int, data_loader: DataLoader, epoch_steps: Optional[int] = None,
+              epochs_until_validation: Optional[int] = 1, valid_data_loader: Optional[DataLoader] = None) -> float:
+        if self.model is None:
+            raise ValueError("Model is not set. Call `set_model()` to assign a model.")
 
-        self.optimizer.zero_grad()
-        outputs = self.model(inputs)
+        logging.info(f"Starting {n_epoch}-epoch training loop...")
+        total_train_loss = 0.0
 
-        if len(batch) == 2:
-            loss = self.criterion(outputs, labels)
-        else:
-            num_recon, cat_recon = outputs
-            loss = self.criterion(num_recon, num_target, cat_recon, cat_target)
-            
-        loss.backward()
-        self.optimizer.step()
+        for epoch in range(n_epoch):
+            epoch_loss = self.train_one_epoch(data_loader, epoch_steps)
+            total_train_loss += epoch_loss
+            logging.info(f"Epoch {epoch + 1}/{n_epoch} Loss: {epoch_loss:.6f}")
 
-        return loss.item()
+            if valid_data_loader and self.early_stopping and (epoch + 1) % epochs_until_validation == 0:
+                validation_loss = self.validate(valid_data_loader)
+                self.early_stopping(validation_loss, self.model)
+
+                if self.early_stopping.early_stop:
+                    logging.info(f"Early stopping at epoch {epoch + 1}")
+                    logging.info(f"Training completed early. Average Loss: {total_train_loss / (epoch + 1):.6f}")
+                    self.early_stopping.restore_best_weights(self.model)
+                    break
+
+        average_train_loss = total_train_loss / n_epoch
+        logging.info(f"Training completed: {n_epoch} epochs, Average Loss: {average_train_loss:.6f}")
+        return average_train_loss
 
     def validate(self, data_loader: DataLoader) -> float:
         logging.info("Starting validation loop...")
-        validation_loss = 0.0
-
         self.model.eval()
-        with torch.no_grad():
+        validation_loss = torch.tensor(0.0, device=self.device)
+
+        with torch.inference_mode():
             for batch in tqdm(data_loader, desc="Validating"):
-                if len(batch) == 2:
-                    inputs, labels = batch
-                else:
-                    inputs, num_target, cat_target = batch
-
-                outputs = self.model(inputs)
-
-                if len(batch) == 2:
-                    loss = self.criterion(outputs, labels)
-                else:
-                    num_recon, cat_recon = outputs
-                    loss = self.criterion(num_recon, num_target, cat_recon, cat_target)
-
-                validation_loss += loss.item()
+                loss = self._step_one_batch(batch)
+                validation_loss += loss.detach()
 
         validation_loss /= len(data_loader)
-
-        logging.info("Done with validation.")
-        logging.info(f"Validation loss: {validation_loss:.6f}.\n")
+        logging.info(f"Validation loss: {validation_loss.item():.6f}")
         return validation_loss
 
     def test(self, data_loader: DataLoader, metric: Optional[Metric] = None) -> None:
-        logging.info(f"Starting test loop...")
-        test_loss = 0.0
-
+        logging.info("Starting test loop...")
         self.model.eval()
-        with torch.no_grad():
+        test_loss = torch.tensor(0.0, device=self.device)
+
+        with torch.inference_mode():
             for batch in tqdm(data_loader, desc="Testing"):
-                if len(batch) == 2:
-                    inputs, labels = batch
-                else:
-                    inputs, num_target, cat_target = batch
-
-                outputs = self.model(inputs)
-
-                if len(batch) == 2:
-                    loss = self.criterion(outputs, labels)
-                else:
-                    num_recon, cat_recon = outputs
-                    loss = self.criterion(num_recon, num_target, cat_recon, cat_target)
-                
-                test_loss += loss.item()
-                if metric is not None:
-                    metric.step(outputs, labels)
+                loss = self._step_one_batch(batch, metric)
+                test_loss += loss.detach()
 
         test_loss /= len(data_loader)
-        logging.info("Done with testing.")
-        logging.info(f"Test loss: {test_loss:.6f}.\n")
+        logging.info(f"Test loss: {test_loss.item():.6f}")
 
-        if metric is not None:
+        if metric:
             metric.compute_metrics()
             logging.info(f"{metric}\n")
-            #metric.save()

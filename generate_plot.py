@@ -1,8 +1,8 @@
+import os
+
 from matplotlib import pyplot as plt
 import pandas as pd
 import numpy as np
-import math
-import os
 
 def plot_E1(hybrid_data_path, baseline_data_path, file_name):
 

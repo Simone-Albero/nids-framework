@@ -1,6 +1,7 @@
-import configparser
 import logging
 from typing import List, Optional
+
+from .config_manager import ConfigManager
 
 class DatasetProperties:
 
@@ -34,35 +35,26 @@ class DatasetProperties:
         self.benign_label = benign_label
 
         logging.info(
-            f"Dataset properties: Total features: {len(features)} (Numeric: {len(self.numeric_features)}, Categorical: {len(categorical_features)})\n"
+            f"DatasetProperties initialized: {len(features)} features "
+            f"(Numeric: {len(self.numeric_features)}, Categorical: {len(self.categorical_features)})"
         )
 
+    @classmethod
+    def from_config(cls, config_path: str) -> "DatasetProperties":
+        ConfigManager.load_config(config_path)
 
-class NamedDatasetProperties:
+        train_path = ConfigManager.get_value('dataset', 'train_path')
+        test_path = ConfigManager.get_value('dataset', 'test_path')
+        features = ConfigManager.get_value('dataset', 'features', [])
+        categorical_features = ConfigManager.get_value('dataset', 'categorical_features', [])
+        label = ConfigManager.get_value('dataset', 'label')
+        benign_label = ConfigManager.get_value('dataset', 'benign_label')
 
-    __slots__ = [
-        "config_path",
-        "SEPARATOR",
-        "_config",
-    ]
-
-    def __init__(self, config_path: str, separator: str = ",") -> None:
-        self.config_path = config_path
-        self.SEPARATOR = separator
-        self._config: configparser.ConfigParser = configparser.ConfigParser()
-        self._config.read(config_path)
-
-    def get_properties(self, name: str) -> DatasetProperties:
-        if name in self._config:
-            logging.info(f"Reading '{name}' from '{self.config_path}'.")
-            spec = self._config[name]
-            return DatasetProperties(
-                train_path=spec.get("train_path"),
-                test_path=spec.get("test_path"),
-                features=spec["features"].split(self.SEPARATOR),
-                categorical_features=spec["categorical_features"].split(self.SEPARATOR),
-                label=spec.get("label"),
-                benign_label=spec.get("benign_label"),
-            )
-        else:
-            raise ValueError(f"Properties for {name} not found.")
+        return cls(
+            train_path=train_path,
+            test_path=test_path,
+            features=features,
+            categorical_features=categorical_features,
+            label=label,
+            benign_label=benign_label,
+        )
