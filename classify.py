@@ -16,6 +16,7 @@ from nids_framework.data.transforms import (
     frequency_encoder,
     log_scaler,
     label_encoder,
+    log_scaler_clipper
 )
 from nids_framework.data.utilities import (
     label_mapping,
@@ -42,6 +43,7 @@ def setup_logging():
 
 
 def load_dataset_properties(dataset_name):
+    logging.info(f"Reading dataset {dataset_name}...")
     return DatasetProperties.from_config(f"configs/{dataset_name}.json")
 
 
@@ -58,21 +60,21 @@ def static_preprocessing(dataset_properties, is_binary=True, config_tag="small")
         else label_mapping(df_train[dataset_properties.label])
     )
 
-    numeric_pipeline = Pipeline(
-        [
-            (
-                "clip",
-                clipper.Clipper(
-                    dataset_properties, ConfigManager.get_value(config_tag, "border")
-                ),
-            ),
-            ("log_scale", log_scaler.LogScaler(dataset_properties)),
-        ]
-    )
+    # numeric_pipeline = Pipeline(
+    #     [
+    #         (
+    #             "clip",
+    #             clipper.Clipper(
+    #                 dataset_properties, ConfigManager.get_value(config_tag, "border")
+    #             ),
+    #         ),
+    #         ("log_scale", log_scaler.LogScaler(dataset_properties)),
+    #     ]
+    # )
 
     preprocessor = ColumnTransformer(
         transformers=[
-            ("num_pipeline", numeric_pipeline, dataset_properties.numeric_features),
+            ("num_pipeline", log_scaler_clipper.LogScalerClipper(dataset_properties, ConfigManager.get_value(config_tag, "border")), dataset_properties.numeric_features),
             (
                 "frequency_encoding",
                 frequency_encoder.FrequencyEncoder(
@@ -95,6 +97,7 @@ def static_preprocessing(dataset_properties, is_binary=True, config_tag="small")
         preprocessor.fit_transform(df_train),
         columns=dataset_properties.features + [dataset_properties.label],
     )
+
     df_test = pd.DataFrame(
         preprocessor.transform(df_test),
         columns=dataset_properties.features + [dataset_properties.label],
@@ -112,7 +115,7 @@ def get_data_loader(
     dataset_properties, x, y=None, device="cpu", config_tag="small", seed=42
 ):
     num_workers = min(
-        int(os.cpu_count() / 2), ConfigManager.get_value(config_tag, "batch_size")
+        int(os.cpu_count()), ConfigManager.get_value(config_tag, "batch_size")
     )
 
     dataset = TabularDataset(
@@ -218,11 +221,12 @@ def run_experiment(
         noise_factor=ConfigManager.get_value(config_tag, "noise_factor"),
     ).to(device)
 
-    criterion = HybridReconstructionLoss()
+    criterion = HybridReconstructionLoss(categorical_levels=ConfigManager.get_value(config_tag, "categorical_levels"))
     train_model(
         autoencoder,
         training_data_loader,
         criterion,
+        config_tag=config_tag,
         epoch_steps=pretraining_steps,
         device=device,
     )
@@ -349,9 +353,9 @@ def run_baseline(
 
 
 if __name__ == "__main__":
-    dataset_name = "nf_unsw_nb15_v2"
+    # dataset_name = "nf_unsw_nb15_v2"
     # dataset_name = "nf_ton_iot_v2"
-    # dataset_name = "cse_cic_ids_2018_v2"
+    dataset_name = "cse_cic_ids_2018_v2"
 
     setup_logging()
     dataset_properties = load_dataset_properties(dataset_name)
@@ -362,7 +366,7 @@ if __name__ == "__main__":
         dataset_properties, config_tag=config_tag
     )
 
-    seeds = [42, 29, 13, 3, 8]
+    seeds = [42, 51, 81, 26, 23]
 
     for seed in seeds:
         for i in range(1, 26, 1):
@@ -372,14 +376,14 @@ if __name__ == "__main__":
                 y_train,
                 x_test,
                 y_test,
-                finetuning_steps=25,
+                finetuning_steps=30,
                 pretraining_steps=100 * i,
                 config_tag=config_tag,
-                metric_path=f"logs/{dataset_name}/pretrain_25b/{seed}.csv",
+                metric_path=f"logs/{dataset_name}/pretrain_30b/{seed}.csv",
                 seed=seed,
             )
 
-        stats = pd.read_csv(f"logs/{dataset_name}/pretrain_25b/{seed}.csv")
+        stats = pd.read_csv(f"logs/{dataset_name}/pretrain_30b/{seed}.csv")
         max_id = stats["F1"].idxmax() + 1
 
         for i in range(1, 31, 1):
@@ -392,7 +396,7 @@ if __name__ == "__main__":
                 finetuning_steps=10 * i,
                 pretraining_steps=100 * max_id,
                 config_tag=config_tag,
-                metric_path=f"logs/{dataset_name}/hybrid_10b/{seed}.csv",
+                metric_path=f"logs/{dataset_name}/hybrid_10b/{100*max_id}pt_{seed}.csv",
                 seed=seed,
             )
             run_baseline(

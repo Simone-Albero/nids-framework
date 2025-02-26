@@ -1,7 +1,7 @@
 {
   "dataset": {
-    "train_path": "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Train.csv",
-    "test_path": "datasets/NF-UNSW-NB15-V2/NF-UNSW-NB15-V2-Test.csv",
+    "train_path": "datasets/NF-CSE-CIC-IDS2018-V2/NF-CSE-CIC-IDS2018-V2-Train.csv",
+    "test_path": "datasets/NF-CSE-CIC-IDS2018-V2/NF-CSE-CIC-IDS2018-V2-Test.csv",
     "features": [
       "L4_SRC_PORT",
       "L4_DST_PORT",
@@ -42,8 +42,7 @@
       "ICMP_IPV4_TYPE",
       "DNS_QUERY_ID",
       "DNS_QUERY_TYPE",
-      "DNS_TTL_ANSWER",
-      "FTP_COMMAND_RET_CODE"
+      "DNS_TTL_ANSWER"
     ],
     "categorical_features": [
       "L4_SRC_PORT",
