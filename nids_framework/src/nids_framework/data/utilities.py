@@ -25,4 +25,4 @@ class OneHotEncoder:
             return one_hot.flatten()
         elif len(one_hot.shape) > 2:
             return one_hot.view(one_hot.size(0), -1)
-        return one_hot
+        return one_hot.float()

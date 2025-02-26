@@ -60,7 +60,7 @@ class TabularDataset(Dataset):
             if self._transforms[key] and sample[key] is not None:
                 sample[key] = self._transforms[key](sample[key])
 
-        features = torch.cat((sample["numeric"], sample["categorical"]), dim=-1)
+        features = torch.cat((sample["numeric"], sample["categorical"]), dim=1)
 
         if self._target is not None:
             return features, sample["target"][..., -1]

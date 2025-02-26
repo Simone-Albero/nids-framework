@@ -17,8 +17,8 @@ class LogScalerClipper(BaseEstimator, TransformerMixin):
         self.max_values: Optional[pd.Series] = None
 
     def fit(self, data: pd.DataFrame, target: Optional[pd.DataFrame] = None):
-        self.min_values = data.min()
-        self.max_values = data.max()
+        self.min_values = data.min().clip(lower=-self.border)
+        self.max_values = data.max().clip(upper=self.border)
         return self
 
     def transform(self, data: pd.DataFrame) -> pd.DataFrame:

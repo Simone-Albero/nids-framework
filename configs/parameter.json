@@ -1,6 +1,6 @@
 {
   "small": {
-    "categorical_levels": 42,
+    "categorical_levels": 32,
     "border": 100000000,
     "batch_size": 32,
     "window_size": 10,
